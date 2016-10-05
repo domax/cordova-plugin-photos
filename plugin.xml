@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<plugin xmlns="http://www.phonegap.com/ns/plugins/1.0"
+        id="cordova-plugin-photos"
+        version="1.0.0">
+
+	<name>Photos</name>
+	<keywords>cordova, camera, file, exif, geo, location, geolocation, tag</keywords>
+
+	<engines>
+		<engine name="cordova" version=">=3.4.0"/>
+	</engines>
+
+	<dependency id="cordova-plugin-camera" version="^2.0.0"/>
+	<dependency id="cordova-plugin-file" version="^4.0.0"/>
+
+	<js-module src="www/Photos.js" name="Photos">
+		<clobbers target="Photos"/>
+	</js-module>
+
+	<platform name="android">
+		<config-file target="res/xml/config.xml" parent="/*">
+			<feature name="Photos">
+				<param name="android-package" value="com.wellup.cordova.Photos"/>
+			</feature>
+		</config-file>
+		<source-file src="src/android/Photos.java" target-dir="src/com/wellup/cordova"/>
+	</platform>
+
+	<platform name="ios">
+		<config-file target="config.xml" parent="/widget">
+			<feature name="Photos">
+				<param name="ios-package" value="CDVPhotos"/>
+			</feature>
+		</config-file>
+		<header-file src="src/ios/CDVPhotos.h"/>
+		<source-file src="src/ios/CDVPhotos.m"/>
+	</platform>
+
+</plugin>
