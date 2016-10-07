@@ -2,6 +2,9 @@
 
 @interface CDVPhotos : CDVPlugin
 
-- (void) greet:(CDVInvokedUrlCommand*)command;
+- (void) collections:(CDVInvokedUrlCommand*)command;
+- (void) photos:(CDVInvokedUrlCommand*)command;
+- (void) thumbnail:(CDVInvokedUrlCommand*)command;
+- (void) image:(CDVInvokedUrlCommand*)command;
 
 @end

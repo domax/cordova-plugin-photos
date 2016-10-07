@@ -10,9 +10,6 @@
 		<engine name="cordova" version=">=3.4.0"/>
 	</engines>
 
-	<dependency id="cordova-plugin-camera" version="^2.0.0"/>
-	<dependency id="cordova-plugin-file" version="^4.0.0"/>
-
 	<js-module src="www/Photos.js" name="Photos">
 		<clobbers target="Photos"/>
 	</js-module>
@@ -27,13 +24,14 @@
 	</platform>
 
 	<platform name="ios">
-		<config-file target="config.xml" parent="/widget">
+		<config-file target="config.xml" parent="/*">
 			<feature name="Photos">
 				<param name="ios-package" value="CDVPhotos"/>
 			</feature>
 		</config-file>
 		<header-file src="src/ios/CDVPhotos.h"/>
 		<source-file src="src/ios/CDVPhotos.m"/>
+		<framework src="Photos.framework"/>
 	</platform>
 
 </plugin>
