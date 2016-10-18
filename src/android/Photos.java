@@ -1,6 +1,7 @@
 package com.wellup.cordova;
 
 import android.Manifest;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.net.Uri;
@@ -51,7 +52,7 @@ public class Photos extends CordovaPlugin {
 
 	private static final String BN_CAMERA = "Camera";
 
-	private static final String E_EXT_STORAGE_READ_PERM = "Read external storage persmission required";
+	private static final String E_EXT_STORAGE_READ_PERM = "Read external storage permission required";
 	private static final String E_COLLECTION_MODE = "Unsupported collection mode";
 	private static final String E_PHOTO_ID_UNDEF = "Photo ID is undefined";
 	private static final String E_PHOTO_ID_WRONG = "Photo with specified ID wasn't found";
@@ -69,20 +70,28 @@ public class Photos extends CordovaPlugin {
 	private static final String[] PRJ_PHOTOS =
 			new String[]{_ID, TITLE, DATE_TAKEN, LATITUDE, LONGITUDE, WIDTH, HEIGHT};
 
+	private String action;
+	private JSONArray data;
+	private CallbackContext callbackContext;
+
 	@Override
 	public boolean execute(String action, JSONArray data, CallbackContext callbackContext) throws JSONException {
 		switch (action) {
 			case "collections":
-				if (checkPermission(callbackContext)) collections(data.optJSONObject(0), callbackContext);
+				if (checkPermission(action, data, callbackContext))
+					collections(data.optJSONObject(0), callbackContext);
 				break;
 			case "photos":
-				if (checkPermission(callbackContext)) photos(data.optJSONArray(0), callbackContext);
+				if (checkPermission(action, data, callbackContext))
+					photos(data.optJSONArray(0), callbackContext);
 				break;
 			case "thumbnail":
-				if (checkPermission(callbackContext)) thumbnail(data.optString(0, null), data.optJSONObject(1), callbackContext);
+				if (checkPermission(action, data, callbackContext))
+					thumbnail(data.optString(0, null), data.optJSONObject(1), callbackContext);
 				break;
 			case "image":
-				if (checkPermission(callbackContext)) image(data.optString(0, null), callbackContext);
+				if (checkPermission(action, data, callbackContext))
+					image(data.optString(0, null), callbackContext);
 				break;
 			default:
 				return false;
@@ -90,13 +99,26 @@ public class Photos extends CordovaPlugin {
 		return true;
 	}
 
-	private boolean checkPermission(final CallbackContext callbackContext) {
-		if (!cordova.hasPermission(Manifest.permission.READ_EXTERNAL_STORAGE)) {
-			cordova.requestPermission(this, 0, Manifest.permission.READ_EXTERNAL_STORAGE);
-			callbackContext.error(E_EXT_STORAGE_READ_PERM);
+	private boolean checkPermission(String action, JSONArray data, final CallbackContext callbackContext) {
+		if (!PermissionHelper.hasPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)) {
+			this.action = action;
+			this.data = data;
+			this.callbackContext = callbackContext;
+			PermissionHelper.requestPermission(this, 0, Manifest.permission.READ_EXTERNAL_STORAGE);
 			return false;
 		}
 		return true;
+	}
+
+	@Override
+	public void onRequestPermissionResult(int requestCode, String[] permissions, int[] grantResults) throws JSONException {
+		for (int grantResult : grantResults) {
+			if (grantResult == PackageManager.PERMISSION_DENIED) {
+				this.callbackContext.error(E_EXT_STORAGE_READ_PERM);
+				return;
+			}
+		}
+		execute(action, data, callbackContext);
 	}
 
 	private void collections(final JSONObject options, final CallbackContext callbackContext) {
@@ -228,7 +250,7 @@ public class Photos extends CordovaPlugin {
 
 	private String repeatText(int count, String text, String separator) {
 		if (count <= 0 || text == null || text.isEmpty()) return "";
-		StringBuilder result = new StringBuilder();
+		final StringBuilder result = new StringBuilder();
 		for (int i = 0; i < count; ++i) {
 			if (i > 0 && separator != null && !separator.isEmpty())
 				result.append(separator);
@@ -240,7 +262,7 @@ public class Photos extends CordovaPlugin {
 	@SuppressWarnings("unchecked")
 	private <T> List<T> jsonArrayToList(JSONArray array) {
 		if (array == null) return null;
-		List<T> result = new ArrayList<>();
+		final List<T> result = new ArrayList<>();
 		for (int i = 0; i < array.length(); ++i)
 			result.add((T) array.opt(i));
 		return result;
