@@ -52,7 +52,7 @@ public class Photos extends CordovaPlugin {
 
 	private static final String BN_CAMERA = "Camera";
 
-	private static final String E_EXT_STORAGE_READ_PERM = "Read external storage permission required";
+	private static final String E_PERMISSION = "Read external storage permission required";
 	private static final String E_COLLECTION_MODE = "Unsupported collection mode";
 	private static final String E_PHOTO_ID_UNDEF = "Photo ID is undefined";
 	private static final String E_PHOTO_ID_WRONG = "Photo with specified ID wasn't found";
@@ -114,7 +114,7 @@ public class Photos extends CordovaPlugin {
 	public void onRequestPermissionResult(int requestCode, String[] permissions, int[] grantResults) throws JSONException {
 		for (int grantResult : grantResults) {
 			if (grantResult == PackageManager.PERMISSION_DENIED) {
-				this.callbackContext.error(E_EXT_STORAGE_READ_PERM);
+				this.callbackContext.error(E_PERMISSION);
 				return;
 			}
 		}

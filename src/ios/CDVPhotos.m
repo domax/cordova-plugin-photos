@@ -36,6 +36,7 @@ NSInteger const DEF_SIZE = 120;
 NSInteger const DEF_QUALITY = 80;
 NSString* const DEF_NAME = @"No Name";
 
+NSString* const E_PERMISSION = @"Access to Photo Library permission required";
 NSString* const E_COLLECTION_MODE = @"Unsupported collection mode";
 NSString* const E_PHOTO_NO_DATA = @"Specified photo has no data";
 NSString* const E_PHOTO_ID_UNDEF = @"Photo ID is undefined";
@@ -64,183 +65,204 @@ NSString* const E_PHOTO_NOT_IMAGE = @"Data with specified ID isn't an image";
 #pragma mark - Command implementations
 
 - (void) collections:(CDVInvokedUrlCommand*)command {
-    NSDictionary* options = [self argOf:command atIndex:0 withDefault:@{}];
-
-    PHFetchResult<PHAssetCollection*>* fetchResultAssetCollections
-    = [self fetchCollections:options];
-    if (fetchResultAssetCollections == nil) {
-        [self failure:command withMessage:E_COLLECTION_MODE];
-        return;
-    }
-
-    NSMutableArray<NSDictionary*>* result
-    = [NSMutableArray arrayWithCapacity:fetchResultAssetCollections.count];
-
     CDVPhotos* __weak weakSelf = self;
-    [fetchResultAssetCollections enumerateObjectsUsingBlock:
-     ^(PHAssetCollection* _Nonnull assetCollection, NSUInteger idx, BOOL* _Nonnull stop) {
-         NSMutableDictionary<NSString*, NSObject*>* collectionItem
-         = [NSMutableDictionary dictionaryWithObjectsAndKeys:
-            assetCollection.localIdentifier, P_ID,
-            assetCollection.localizedTitle, P_NAME,
-            nil];
-         if ([weakSelf isNull:assetCollection.localizedTitle]) {
-            collectionItem[P_NAME] = DEF_NAME;
-         }
+    [self checkPermissionsOf:command andRun:^{
+        NSDictionary* options = [weakSelf argOf:command atIndex:0 withDefault:@{}];
 
-         [result addObject:collectionItem];
+        PHFetchResult<PHAssetCollection*>* fetchResultAssetCollections
+        = [weakSelf fetchCollections:options];
+        if (fetchResultAssetCollections == nil) {
+            [weakSelf failure:command withMessage:E_COLLECTION_MODE];
+            return;
+        }
+
+        NSMutableArray<NSDictionary*>* result
+        = [NSMutableArray arrayWithCapacity:fetchResultAssetCollections.count];
+
+        [fetchResultAssetCollections enumerateObjectsUsingBlock:
+         ^(PHAssetCollection* _Nonnull assetCollection, NSUInteger idx, BOOL* _Nonnull stop) {
+             NSMutableDictionary<NSString*, NSObject*>* collectionItem
+             = [NSMutableDictionary dictionaryWithObjectsAndKeys:
+                assetCollection.localIdentifier, P_ID,
+                assetCollection.localizedTitle, P_NAME,
+                nil];
+             if ([weakSelf isNull:assetCollection.localizedTitle]) {
+                 collectionItem[P_NAME] = DEF_NAME;
+             }
+
+             [result addObject:collectionItem];
+         }];
+        [weakSelf success:command withArray:result];
     }];
-    [self success:command withArray:result];
 }
 
 - (void) photos:(CDVInvokedUrlCommand*)command {
-    NSArray* collectionIds = [self argOf:command atIndex:0 withDefault:nil];
-
-    PHFetchResult<PHAssetCollection*>* fetchResultAssetCollections
-    = collectionIds == nil || collectionIds.count == 0
-    ? [self fetchCollections:@{}]
-    : [PHAssetCollection fetchAssetCollectionsWithLocalIdentifiers:collectionIds
-                                                           options:nil];
-    if (fetchResultAssetCollections == nil) {
-        [self failure:command withMessage:E_COLLECTION_MODE];
-        return;
-    }
-
-    NSMutableArray<NSDictionary*>* result = [NSMutableArray array];
     CDVPhotos* __weak weakSelf = self;
-    [fetchResultAssetCollections enumerateObjectsUsingBlock:
-     ^(PHAssetCollection* _Nonnull assetCollection, NSUInteger idx, BOOL* _Nonnull stop) {
-         PHFetchOptions* fetchOptions = [[PHFetchOptions alloc] init];
-         fetchOptions.sortDescriptors = @[[NSSortDescriptor
-                                           sortDescriptorWithKey:@"creationDate"
-                                           ascending:NO]];
-         fetchOptions.predicate
-         = [NSPredicate predicateWithFormat:@"mediaType = %d", PHAssetMediaTypeImage];
+    [self checkPermissionsOf:command andRun:^{
+        NSArray* collectionIds = [weakSelf argOf:command atIndex:0 withDefault:nil];
+        NSLog(@"photos: collectionIds=%@", collectionIds);
 
-         PHFetchResult<PHAsset*>* fetchResultAssets =
-         [PHAsset fetchAssetsInAssetCollection:assetCollection options:fetchOptions];
+        PHFetchResult<PHAssetCollection*>* fetchResultAssetCollections
+        = collectionIds == nil || collectionIds.count == 0
+        ? [weakSelf fetchCollections:@{}]
+        : [PHAssetCollection fetchAssetCollectionsWithLocalIdentifiers:collectionIds
+                                                               options:nil];
+        if (fetchResultAssetCollections == nil) {
+            [weakSelf failure:command withMessage:E_COLLECTION_MODE];
+            return;
+        }
 
-         [fetchResultAssets enumerateObjectsUsingBlock:
-          ^(PHAsset* _Nonnull asset, NSUInteger idx, BOOL* _Nonnull stop) {
-              PHAssetResource* resource = [weakSelf resourceForAsset:asset];
-              if (resource != nil) {
-                  NSTextCheckingResult* match
-                  = [weakSelf.extRegex
-                     firstMatchInString:resource.originalFilename
-                     options:0
-                     range:NSMakeRange(0, resource.originalFilename.length)];
-                  if (match != nil) {
-                      NSString* name = [resource.originalFilename
-                                        substringWithRange:[match rangeAtIndex:1]];
-                      NSString* ext = [[resource.originalFilename
-                                        substringWithRange:[match rangeAtIndex:2]]
-                                       uppercaseString];
-                      NSString* type = weakSelf.extType[ext];
-                      if (![weakSelf isNull:type]) {
-                          NSMutableDictionary<NSString*, NSObject*>* assetItem
-                          = [NSMutableDictionary dictionaryWithObjectsAndKeys:
-                             asset.localIdentifier, P_ID,
-                             name, P_NAME,
-                             type, P_TYPE,
-                             [weakSelf.dateFormat stringFromDate:asset.creationDate], P_DATE,
-                             @(asset.pixelWidth), P_WIDTH,
-                             @(asset.pixelHeight), P_HEIGHT,
-                             nil];
-                          if (![weakSelf isNull:asset.location]) {
-                              CLLocationCoordinate2D coord = asset.location.coordinate;
-                              [assetItem setValue:@(coord.latitude) forKey:P_LAT];
-                              [assetItem setValue:@(coord.longitude) forKey:P_LON];
+        NSMutableArray<NSDictionary*>* result = [NSMutableArray array];
+        [fetchResultAssetCollections enumerateObjectsUsingBlock:
+         ^(PHAssetCollection* _Nonnull assetCollection, NSUInteger idx, BOOL* _Nonnull stop) {
+             PHFetchOptions* fetchOptions = [[PHFetchOptions alloc] init];
+             fetchOptions.sortDescriptors = @[[NSSortDescriptor
+                                               sortDescriptorWithKey:@"creationDate"
+                                               ascending:NO]];
+             fetchOptions.predicate
+             = [NSPredicate predicateWithFormat:@"mediaType = %d", PHAssetMediaTypeImage];
+
+             PHFetchResult<PHAsset*>* fetchResultAssets =
+             [PHAsset fetchAssetsInAssetCollection:assetCollection options:fetchOptions];
+
+             [fetchResultAssets enumerateObjectsUsingBlock:
+              ^(PHAsset* _Nonnull asset, NSUInteger idx, BOOL* _Nonnull stop) {
+                  PHAssetResource* resource = [weakSelf resourceForAsset:asset];
+                  if (resource != nil) {
+                      NSTextCheckingResult* match
+                      = [weakSelf.extRegex
+                         firstMatchInString:resource.originalFilename
+                         options:0
+                         range:NSMakeRange(0, resource.originalFilename.length)];
+                      if (match != nil) {
+                          NSString* name = [resource.originalFilename
+                                            substringWithRange:[match rangeAtIndex:1]];
+                          NSString* ext = [[resource.originalFilename
+                                            substringWithRange:[match rangeAtIndex:2]]
+                                           uppercaseString];
+                          NSString* type = weakSelf.extType[ext];
+                          if (![weakSelf isNull:type]) {
+                              NSMutableDictionary<NSString*, NSObject*>* assetItem
+                              = [NSMutableDictionary dictionaryWithObjectsAndKeys:
+                                 asset.localIdentifier, P_ID,
+                                 name, P_NAME,
+                                 type, P_TYPE,
+                                 [weakSelf.dateFormat stringFromDate:asset.creationDate], P_DATE,
+                                 @(asset.pixelWidth), P_WIDTH,
+                                 @(asset.pixelHeight), P_HEIGHT,
+                                 nil];
+                              if (![weakSelf isNull:asset.location]) {
+                                  CLLocationCoordinate2D coord = asset.location.coordinate;
+                                  [assetItem setValue:@(coord.latitude) forKey:P_LAT];
+                                  [assetItem setValue:@(coord.longitude) forKey:P_LON];
+                              }
+                              [result addObject:assetItem];
                           }
-                          [result addObject:assetItem];
                       }
                   }
-              }
-          }];
-     }];
-    [self success:command withArray:result];
+              }];
+         }];
+        [weakSelf success:command withArray:result];
+    }];
 }
 
 - (void) thumbnail:(CDVInvokedUrlCommand*)command {
-    PHAsset* asset = [self assetByCommand:command];
-    if (asset == nil) return;
-
-    NSDictionary* options = [self argOf:command atIndex:1 withDefault:@{}];
-
-    NSInteger size = [options[P_SIZE] integerValue];
-    if (size <= 0) size = DEF_SIZE;
-    NSInteger quality = [options[P_QUALITY] integerValue];
-    if (quality <= 0) quality = DEF_QUALITY;
-    BOOL asDataUrl = [options[P_AS_DATAURL] boolValue];
-
-    PHImageRequestOptions* reqOptions = [[PHImageRequestOptions alloc] init];
-    reqOptions.resizeMode = PHImageRequestOptionsResizeModeExact;
-    reqOptions.networkAccessAllowed = YES;
-
     CDVPhotos* __weak weakSelf = self;
-    [[PHImageManager defaultManager]
-     requestImageForAsset:asset
-     targetSize:CGSizeMake(size, size)
-     contentMode:PHImageContentModeDefault
-     options:reqOptions
-     resultHandler:^(UIImage* _Nullable result, NSDictionary* _Nullable info) {
-         NSError* error = info[PHImageErrorKey];
-         if (![weakSelf isNull:error]) {
-             [weakSelf failure:command withMessage:error.localizedDescription];
-             return;
-         }
-         if ([weakSelf isNull:result]) {
-             [weakSelf failure:command withMessage:E_PHOTO_NO_DATA];
-             return;
-         }
-         NSData* data = UIImageJPEGRepresentation(result, (CGFloat) quality / 100);
-         if (asDataUrl) {
-             NSString* dataUrl = [NSString stringWithFormat:T_DATA_URL,
-                                  [data base64EncodedStringWithOptions:0]];
-             [weakSelf success:command withMessage:dataUrl];
-         } else [weakSelf success:command withData:data];
-     }];
+    [self checkPermissionsOf:command andRun:^{
+        PHAsset* asset = [weakSelf assetByCommand:command];
+        if (asset == nil) return;
+
+        NSDictionary* options = [weakSelf argOf:command atIndex:1 withDefault:@{}];
+
+        NSInteger size = [options[P_SIZE] integerValue];
+        if (size <= 0) size = DEF_SIZE;
+        NSInteger quality = [options[P_QUALITY] integerValue];
+        if (quality <= 0) quality = DEF_QUALITY;
+        BOOL asDataUrl = [options[P_AS_DATAURL] boolValue];
+
+        PHImageRequestOptions* reqOptions = [[PHImageRequestOptions alloc] init];
+        reqOptions.resizeMode = PHImageRequestOptionsResizeModeExact;
+        reqOptions.networkAccessAllowed = YES;
+
+        [[PHImageManager defaultManager]
+         requestImageForAsset:asset
+         targetSize:CGSizeMake(size, size)
+         contentMode:PHImageContentModeDefault
+         options:reqOptions
+         resultHandler:^(UIImage* _Nullable result, NSDictionary* _Nullable info) {
+             NSError* error = info[PHImageErrorKey];
+             if (![weakSelf isNull:error]) {
+                 [weakSelf failure:command withMessage:error.localizedDescription];
+                 return;
+             }
+             if ([weakSelf isNull:result]) {
+                 [weakSelf failure:command withMessage:E_PHOTO_NO_DATA];
+                 return;
+             }
+             NSData* data = UIImageJPEGRepresentation(result, (CGFloat) quality / 100);
+             if (asDataUrl) {
+                 NSString* dataUrl = [NSString stringWithFormat:T_DATA_URL,
+                                      [data base64EncodedStringWithOptions:0]];
+                 [weakSelf success:command withMessage:dataUrl];
+             } else [weakSelf success:command withData:data];
+         }];
+    }];
 }
 
 - (void) image:(CDVInvokedUrlCommand*)command {
-    PHAsset* asset = [self assetByCommand:command];
-    if (asset == nil) return;
-
     CDVPhotos* __weak weakSelf = self;
+    [self checkPermissionsOf:command andRun:^{
+        PHAsset* asset = [weakSelf assetByCommand:command];
+        if (asset == nil) return;
 
-    PHImageRequestOptions* reqOptions = [[PHImageRequestOptions alloc] init];
-    reqOptions.networkAccessAllowed = YES;
-    reqOptions.progressHandler = ^(double progress,
-                                   NSError* __nullable error,
-                                   BOOL* stop,
-                                   NSDictionary* __nullable info) {
-        NSLog(@"progress: %.2f, info: %@", progress, info);
-        if (![weakSelf isNull:error]) {
-            NSLog(@"error: %@", error);
-            *stop = YES;
-        }
-    };
+        PHImageRequestOptions* reqOptions = [[PHImageRequestOptions alloc] init];
+        reqOptions.networkAccessAllowed = YES;
+        reqOptions.progressHandler = ^(double progress,
+                                       NSError* __nullable error,
+                                       BOOL* stop,
+                                       NSDictionary* __nullable info) {
+            NSLog(@"progress: %.2f, info: %@", progress, info);
+            if (![weakSelf isNull:error]) {
+                NSLog(@"error: %@", error);
+                *stop = YES;
+            }
+        };
 
-    [[PHImageManager defaultManager]
-     requestImageDataForAsset:asset
-     options:reqOptions
-     resultHandler:^(NSData* _Nullable imageData,
-                     NSString* _Nullable dataUTI,
-                     UIImageOrientation orientation,
-                     NSDictionary* _Nullable info) {
-         NSError* error = info[PHImageErrorKey];
-         if (![weakSelf isNull:error]) {
-             [weakSelf failure:command withMessage:error.localizedDescription];
-             return;
-         }
-         if ([weakSelf isNull:imageData]) {
-             [weakSelf failure:command withMessage:E_PHOTO_NO_DATA];
-             return;
-         }
-         [weakSelf success:command withData:imageData];
-     }];
+        [[PHImageManager defaultManager]
+         requestImageDataForAsset:asset
+         options:reqOptions
+         resultHandler:^(NSData* _Nullable imageData,
+                         NSString* _Nullable dataUTI,
+                         UIImageOrientation orientation,
+                         NSDictionary* _Nullable info) {
+             NSError* error = info[PHImageErrorKey];
+             if (![weakSelf isNull:error]) {
+                 [weakSelf failure:command withMessage:error.localizedDescription];
+                 return;
+             }
+             if ([weakSelf isNull:imageData]) {
+                 [weakSelf failure:command withMessage:E_PHOTO_NO_DATA];
+                 return;
+             }
+             [weakSelf success:command withData:imageData];
+         }];
+    }];
 }
 
 #pragma mark - Auxiliary functions
+
+- (void) checkPermissionsOf:(CDVInvokedUrlCommand*)command andRun:(void (^)())block {
+    [PHPhotoLibrary requestAuthorization:^(PHAuthorizationStatus status) {
+        switch ([PHPhotoLibrary authorizationStatus]) {
+            case PHAuthorizationStatusAuthorized:
+                [self.commandDelegate runInBackground:block];
+                break;
+            default:
+                [self failure:command withMessage:E_PERMISSION];
+                break;
+        }
+    }];
+}
 
 - (BOOL) isNull:(id)obj {
     return obj == nil || [[NSNull null] isEqual:obj];
