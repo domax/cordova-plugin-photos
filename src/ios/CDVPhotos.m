@@ -39,6 +39,7 @@ NSString* const DEF_NAME = @"No Name";
 NSString* const E_PERMISSION = @"Access to Photo Library permission required";
 NSString* const E_COLLECTION_MODE = @"Unsupported collection mode";
 NSString* const E_PHOTO_NO_DATA = @"Specified photo has no data";
+NSString* const E_PHOTO_THUMB = @"Cannot get a thumbnail of photo";
 NSString* const E_PHOTO_ID_UNDEF = @"Photo ID is undefined";
 NSString* const E_PHOTO_ID_WRONG = @"Photo with specified ID wasn't found";
 NSString* const E_PHOTO_NOT_IMAGE = @"Data with specified ID isn't an image";
@@ -200,6 +201,10 @@ NSString* const E_PHOTO_NOT_IMAGE = @"Data with specified ID isn't an image";
                  return;
              }
              NSData* data = UIImageJPEGRepresentation(result, (CGFloat) quality / 100);
+             if ([weakSelf isNull:data]) {
+                 [weakSelf failure:command withMessage:E_PHOTO_THUMB];
+                 return;
+             }
              if (asDataUrl) {
                  NSString* dataUrl = [NSString stringWithFormat:T_DATA_URL,
                                       [data base64EncodedStringWithOptions:0]];
