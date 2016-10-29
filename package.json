@@ -1,39 +1,39 @@
 {
-	"name": "cordova-plugin-photos",
-	"version": "1.0.0",
-	"description": "This Cordova/Phonegap plugin provides access to photo library on device.",
-	"cordova": {
-		"id": "cordova-plugin-photos",
-		"platforms": [
-			"android",
-			"ios"
-		]
-	},
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/domax/cordova-plugin-photos"
-	},
-	"keywords": [
-		"ecosystem:cordova",
-		"cordova-android",
-		"cordova-ios",
-		"exif",
-		"photo-library",
-		"photo-album",
-		"photo-collection",
-		"photo-asset",
-		"thumbnail"
-	],
-	"autor": "Maksym Dominichenko <max@dominichenko.com>",
-	"license": "MIT",
-	"engines": [
-		{
-			"name": "cordova",
-			"version": ">=3.0.0"
-		}
-	],
-	"bugs": {
-		"url": "https://github.com/domax/cordova-plugin-photos/issues"
-	},
-	"homepage": "https://github.com/domax/cordova-plugin-photos#README"
+  "name": "cordova-plugin-photos",
+  "version": "1.0.1",
+  "description": "This Cordova/Phonegap plugin provides access to photo library on device.",
+  "cordova": {
+    "id": "cordova-plugin-photos",
+    "platforms": [
+      "android",
+      "ios"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/domax/cordova-plugin-photos"
+  },
+  "keywords": [
+    "ecosystem:cordova",
+    "cordova-android",
+    "cordova-ios",
+    "exif",
+    "photo-library",
+    "photo-album",
+    "photo-collection",
+    "photo-asset",
+    "thumbnail"
+  ],
+  "autor": "Maksym Dominichenko <max@dominichenko.com>",
+  "license": "MIT",
+  "engines": [
+    {
+      "name": "cordova",
+      "version": ">=3.0.0"
+    }
+  ],
+  "bugs": {
+    "url": "https://github.com/domax/cordova-plugin-photos/issues"
+  },
+  "homepage": "https://github.com/domax/cordova-plugin-photos#README"
 }
