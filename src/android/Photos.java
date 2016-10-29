@@ -21,7 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.wellup.cordova;
+package com.domax.cordova;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
