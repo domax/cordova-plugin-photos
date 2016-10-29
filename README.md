@@ -26,22 +26,22 @@ This function requests the list of available photo collections (or albums) depen
 
 An optional `option` argument supports only one field `collectionMode` with the following values depending on platforms:
 
-Value | Platform | Action
------ | -------- | ------
-`ROLL` | iOS, Android | Return collection data of device's Camera Roll. **Default**.
-`SMART` | iOS | Return list of albums that gather and display photos automatically based on criteria you specify.
-`ALBUMS` | iOS | Return list of regular albums you create and name.
-`MOMENTS` | iOS | Return list of albums that are automatically generated based on date and location.
+| Value | Platform | Action |
+|:----- |:--------:|:------ |
+| `ROLL` | iOS, Android | Return collection data of device's Camera Roll. **Default**. |
+| `SMART` | iOS | Return list of albums that gather and display photos automatically based on criteria you specify. |
+| `ALBUMS` | iOS | Return list of regular albums you create and name. |
+| `MOMENTS` | iOS | Return list of albums that are automatically generated based on date and location. |
 
 #### Callbacks
 
 The resulting structure of argument that comes into `success` callback function is
 array of objects with the following structure:
 
-Property | Type | Descritpion
--------- | ---- | -----------
-`id` | string | An unique collection identifier that you may use in [`photos()`][h2] method.
-`name` | string | A human-friendly name of collection. May not be unique.
+| Property | Type | Descritpion |
+|:-------- |:----:|:----------- |
+| `id` | string | An unique collection identifier that you may use in [`photos()`][h2] method. |
+| `name` | string | A human-friendly name of collection. May not be unique. |
 
 The `failure` callback function takes a string argument with error description.
 
@@ -73,16 +73,16 @@ If you omit `collectionIds` argument then only assets from device's Camera Roll 
 The resulting structure of argument that comes into `success` callback function is 
 array of objects with the following structure:
 
-Property | Type | Descritpion
--------- | ---- | -----------
-`id` | string | An unique photo identifier that you may use in [`thumbnail()`][h3] or [`image()`][h4] methods.
-`name` | string | A file name of photo (without path and extension).
-`date` | string | A photo's timestamp in [ISO 8601][1] format in `YYYY-MM-dd'T'HH:mm:ssZZZ` pattern.
-`contentType` | string | Content type of image: e.g. `"image/png"` or `"image/jpeg"`.
-`width` | int | A width of image in pixels.
-`height` | int | A height of image in pixels.
-`latitude` | double | An optional geolocation latitude. 
-`longitude` | double | An optional geolocation longitude. 
+| Property | Type | Descritpion |
+|:-------- |:----:|:----------- |
+| `id` | string | An unique photo identifier that you may use in [`thumbnail()`][h3] or [`image()`][h4] methods. |
+| `name` | string | A file name of photo (without path and extension). |
+| `date` | string | A photo's timestamp in [ISO 8601][1] format in `YYYY-MM-dd'T'HH:mm:ssZZZ` pattern. |
+| `contentType` | string | Content type of image: e.g. `"image/png"` or `"image/jpeg"`. |
+| `width` | int | A width of image in pixels. |
+| `height` | int | A height of image in pixels. |
+| `latitude` | double | An optional geolocation latitude. | 
+| `longitude` | double | An optional geolocation longitude. | 
 
 The `failure` callback function takes a string argument with error description.
 
@@ -110,11 +110,11 @@ Thumbnails are returned only as JPEG data, even if source image is in PNG format
 1. A required `photoId` argument that is a photo ID you obtained by [`photos()`][h2] function.
 2. An optional `options` argument that supports the following keys and according values:
 
-	Key | Type | Default | Action
-	--- | ---- | ------- | ------
-	`asDataUrl` | boolean | `false` | Whether return thumbnail data as [Data URL][2] (`true`) or as [ArrayBuffer][3]. 
-	`dimension` | int | `120` | A maximal size of thumbnail both for width and height (aspect ratio will be kept).
-	`quality` | int | `80` | A [JPEG][4] quality factor from `100` (best quality) to `1` (least quality).
+	| Key | Type | Default | Action |
+	|:--- |:----:|:-------:|:------ |
+	| `asDataUrl` | boolean | `false` | Whether return thumbnail data as [Data URL][2] (`true`) or as [ArrayBuffer][3]. | 
+	| `dimension` | int | `120` | A maximal size of thumbnail both for width and height (aspect ratio will be kept). |
+	| `quality` | int | `80` | A [JPEG][4] quality factor from `100` (best quality) to `1` (least quality). |
 
 *__Please note__ that you have to use combination of `asDataUrl:true` and `dimension` carefully:
 device's WebViews have limitations in processing large [Data URL][2]s.*
@@ -165,7 +165,7 @@ The `failure` callback function takes a string argument with error description.
 #### Example:
 ```js
 // Get the original data of photo with ID "XXXXXX": 
-Photos.photo("XXXXXX",
+Photos.image("XXXXXX",
 	function(data) {
 		console.log("Photo: " + data);
 	},
