@@ -40,7 +40,7 @@ array of objects with the following structure:
 
 Property | Type | Descritpion
 -------- | ---- | -----------
-`id` | string | An unique collection identifier that you may use in `photos()` method.
+`id` | string | An unique collection identifier that you may use in [`photos()`][h2] method.
 `name` | string | A human-friendly name of collection. May not be unique.
 
 The `failure` callback function takes a string argument with error description.
@@ -64,7 +64,7 @@ This function requests the list of photo assets that are available in specified 
 #### Arguments
 
 An optional `collectionIds` argument takes an array of collection IDs that are obtained
-with `collections()` method. You may specify only one ID as a string argument.
+with [`collections()`][h1] method. You may specify only one ID as a string argument.
 
 If you omit `collectionIds` argument then only assets from device's Camera Roll are returned. 
 
@@ -75,7 +75,7 @@ array of objects with the following structure:
 
 Property | Type | Descritpion
 -------- | ---- | -----------
-`id` | string | An unique photo identifier that you may use in `thumbnail()` or `image()` methods.
+`id` | string | An unique photo identifier that you may use in [`thumbnail()`][h3] or [`image()`][h4] methods.
 `name` | string | A file name of photo (without path and extension).
 `date` | string | A photo's timestamp in [ISO 8601][1] format in `YYYY-MM-dd'T'HH:mm:ssZZZ` pattern.
 `contentType` | string | Content type of image: e.g. `"image/png"` or `"image/jpeg"`.
@@ -107,7 +107,7 @@ Thumbnails are returned only as JPEG data, even if source image is in PNG format
 
 #### Arguments
 
-1. A required `photoId` argument that is a photo ID you obtained by `photos()` function.
+1. A required `photoId` argument that is a photo ID you obtained by [`photos()`][h2] function.
 2. An optional `options` argument that supports the following keys and according values:
 
 	Key | Type | Default | Action
@@ -149,11 +149,11 @@ Photos.thumbnail("XXXXXX",
 
 This function requests original data of specified photo.
 The content type of returned data may be different: 
-you may pick it up in `contentType` property of results of `photos()` function.
+you may pick it up in `contentType` property of results of [`photos()`][h2] function.
 
 #### Arguments
 
-A required `photoId` argument that is a photo ID you obtained by `photos()` function.
+A required `photoId` argument that is a photo ID you obtained by [`photos()`][h2] function.
 
 #### Callbacks
 
@@ -188,3 +188,8 @@ For more info on plugins see the [Plugin Development Guide][7].
 [5]: https://cordova.apache.org/docs/en/latest/reference/cordova-plugin-file/
 [6]: https://cordova.apache.org/docs/en/latest/guide/cli/
 [7]: https://cordova.apache.org/docs/en/latest/guide/hybrid/plugins/
+
+[h1]: #get-asset-collectionsalbums---collections
+[h2]: #get-photo-assets---photos
+[h3]: #generate-a-thumbnail-of-given-photo---thumbnail
+[h4]: #get-original-data-of-photo---image
