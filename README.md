@@ -12,7 +12,11 @@ Using
 
 ### Install the plugin
 
-    $ cordova plugin add https://github.com/domax/cordova-plugin-photos.git --save
+    $ cordova plugin add cordova-plugin-photos
+
+or last, fresh version right from Github:
+
+    $ cordova plugin add https://github.com/domax/cordova-plugin-photos.git --save    
 
 ### Get asset collections/albums - `collections()`
 
