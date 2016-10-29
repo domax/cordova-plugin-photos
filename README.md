@@ -26,29 +26,31 @@ This function requests the list of available photo collections (or albums) depen
 
 An optional `option` argument supports only one field `collectionMode` with the following values depending on platforms:
 
-| Value | Platform | Action |
-|:----- |:--------:|:------ |
-| `ROLL` | iOS, Android | Return collection data of device's Camera Roll. **Default**. |
-| `SMART` | iOS | Return list of albums that gather and display photos automatically based on criteria you specify. |
-| `ALBUMS` | iOS | Return list of regular albums you create and name. |
-| `MOMENTS` | iOS | Return list of albums that are automatically generated based on date and location. |
+| Value     | Action |
+|:--------- |:------ |
+| `ROLL`    | Return collection data of device's Camera Roll. **Default**. |
+| `SMART`   | Return list of albums that gather and display photos automatically based on criteria you specify. |
+| `ALBUMS`  | Return list of all regular albums you create and name. |
+| `MOMENTS` | Return list of albums that are automatically generated based on date and location. |
+
+For Android platform `SMART`, `ALBUMS` and `MOMENTS` all works as `ALBUMS`.
 
 #### Callbacks
 
 The resulting structure of argument that comes into `success` callback function is
 array of objects with the following structure:
 
-| Property | Type | Descritpion |
-|:-------- |:----:|:----------- |
-| `id` | string | An unique collection identifier that you may use in [`photos()`][h2] method. |
-| `name` | string | A human-friendly name of collection. May not be unique. |
+| Property | Type   | Descritpion |
+|:-------- |:------:|:----------- |
+| `id`     | string | An unique collection identifier that you may use in [`photos()`][h2] method. |
+| `name`   | string | A human-friendly name of collection. May not be unique. |
 
 The `failure` callback function takes a string argument with error description.
 
 #### Example:
 ```js
-// Get all the iOS collections/albums that represent groups of photos orgnised by date and location
-Photos.collections({"collectionMode": "MOMENTS"},
+// Get all the user's collections/albums
+Photos.collections({"collectionMode": "ALBUMS"},
 	function(albums) {
 		console.log("Albums: " + JSON.stringify(albums));
 	},
@@ -73,16 +75,16 @@ If you omit `collectionIds` argument then only assets from device's Camera Roll 
 The resulting structure of argument that comes into `success` callback function is 
 array of objects with the following structure:
 
-| Property | Type | Descritpion |
-|:-------- |:----:|:----------- |
-| `id` | string | An unique photo identifier that you may use in [`thumbnail()`][h3] or [`image()`][h4] methods. |
-| `name` | string | A file name of photo (without path and extension). |
-| `date` | string | A photo's timestamp in [ISO 8601][1] format in `YYYY-MM-dd'T'HH:mm:ssZZZ` pattern. |
+| Property      | Type   | Descritpion |
+|:------------- |:------:|:----------- |
+| `id`          | string | An unique photo identifier that you may use in [`thumbnail()`][h3] or [`image()`][h4] methods. |
+| `name`        | string | A file name of photo (without path and extension). |
+| `date`        | string | A photo's timestamp in [ISO 8601][1] format in `YYYY-MM-dd'T'HH:mm:ssZZZ` pattern. |
 | `contentType` | string | Content type of image: e.g. `"image/png"` or `"image/jpeg"`. |
-| `width` | int | A width of image in pixels. |
-| `height` | int | A height of image in pixels. |
-| `latitude` | double | An optional geolocation latitude. | 
-| `longitude` | double | An optional geolocation longitude. | 
+| `width`       | int    | A width of image in pixels. |
+| `height`      | int    | A height of image in pixels. |
+| `latitude`    | double | An optional geolocation latitude. | 
+| `longitude`   | double | An optional geolocation longitude. | 
 
 The `failure` callback function takes a string argument with error description.
 
@@ -103,18 +105,22 @@ Photos.photos(
 This function requests generating a scaled (reduced) image from its original data.
 Each supported platform uses its own specific tools to make scaled images - including optimizations and caching.
 
-Thumbnails are returned only as JPEG data, even if source image is in PNG format (e.g. screenshot).
+Despite the fact that multiple parallel calls to this function is quite safe, 
+use it with caution - if you will request generating a lot of thumbnails simultaneously, 
+all of them are processed by device in parallel threads, so you may suffer from big delays.
+
+Thumbnails are returned only as JPEG data, even if source image is in other format (e.g. PNG screenshot).
 
 #### Arguments
 
 1. A required `photoId` argument that is a photo ID you obtained by [`photos()`][h2] function.
 2. An optional `options` argument that supports the following keys and according values:
 
-	| Key | Type | Default | Action |
-	|:--- |:----:|:-------:|:------ |
+	| Key         | Type    | Default | Action |
+	|:----------- |:-------:|:-------:|:------ |
 	| `asDataUrl` | boolean | `false` | Whether return thumbnail data as [Data URL][2] (`true`) or as [ArrayBuffer][3]. | 
-	| `dimension` | int | `120` | A maximal size of thumbnail both for width and height (aspect ratio will be kept). |
-	| `quality` | int | `80` | A [JPEG][4] quality factor from `100` (best quality) to `1` (least quality). |
+	| `dimension` | int     | `120`   | A maximal size of thumbnail both for width and height (aspect ratio will be kept). |
+	| `quality`   | int     | `80`    | A [JPEG][4] quality factor from `100` (best quality) to `1` (least quality). |
 
 *__Please note__ that you have to use combination of `asDataUrl:true` and `dimension` carefully:
 device's WebViews have limitations in processing large [Data URL][2]s.*
@@ -132,7 +138,7 @@ The `failure` callback function takes a string argument with error description.
 
 #### Example:
 ```js
-// Generate a thumbnail of photo with ID "XXXXXX" 
+// Generate a thumbnail of photo with ID "XXXXXX" as data URL
 // with maximal dimension by width or height of 300 pixels
 // and JPEG guality of 70:
 Photos.thumbnail("XXXXXX",
@@ -181,15 +187,15 @@ For more information on setting up Cordova see [the documentation][6].
 
 For more info on plugins see the [Plugin Development Guide][7].
 
-[1]: https://www.w3.org/TR/NOTE-datetime
-[2]: https://en.wikipedia.org/wiki/Data_URI_scheme
-[3]: https://www.html5rocks.com/en/tutorials/webgl/typed_arrays/
-[4]: https://en.wikipedia.org/wiki/JPEG
-[5]: https://cordova.apache.org/docs/en/latest/reference/cordova-plugin-file/
-[6]: https://cordova.apache.org/docs/en/latest/guide/cli/
-[7]: https://cordova.apache.org/docs/en/latest/guide/hybrid/plugins/
-
 [h1]: #get-asset-collectionsalbums---collections
 [h2]: #get-photo-assets---photos
 [h3]: #generate-a-thumbnail-of-given-photo---thumbnail
 [h4]: #get-original-data-of-photo---image
+
+[1]: https://www.w3.org/TR/NOTE-datetime
+[2]: https://en.wikipedia.org/wiki/Data_URI_scheme
+[3]: https://www.html5rocks.com/en/tutorials/webgl/typed_arrays/
+[4]: https://en.wikipedia.org/wiki/JPEG
+[5]: https://cordova.apache.org/docs/en/latest/reference/cordova-plugin-file/#write-to-a-file-
+[6]: https://cordova.apache.org/docs/en/latest/guide/cli/
+[7]: https://cordova.apache.org/docs/en/latest/guide/hybrid/plugins/
