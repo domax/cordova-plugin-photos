@@ -28,6 +28,7 @@
 @property (nonatomic, strong, readonly) NSDateFormatter* dateFormat;
 @property (nonatomic, strong, readonly) NSDictionary<NSString*, NSString*>* extType;
 @property (nonatomic, strong, readonly) NSRegularExpression* extRegex;
+@property (nonatomic, strong) CDVInvokedUrlCommand* photosCommand;
 @end
 
 @implementation CDVPhotos
@@ -51,6 +52,9 @@ NSString* const P_C_MODE_SMART = @"SMART";
 NSString* const P_C_MODE_ALBUMS = @"ALBUMS";
 NSString* const P_C_MODE_MOMENTS = @"MOMENTS";
 
+NSString* const P_LIST_OFFSET = @"offset";
+NSString* const P_LIST_LIMIT = @"limit";
+
 NSString* const T_DATA_URL = @"data:image/jpeg;base64,%@";
 NSString* const T_DATE_FORMAT = @"YYYY-MM-dd\'T\'HH:mm:ssZZZZZ";
 NSString* const T_EXT_PATTERN = @"^(.+)\\.([a-z]{3,4})$";
@@ -66,6 +70,7 @@ NSString* const E_PHOTO_THUMB = @"Cannot get a thumbnail of photo";
 NSString* const E_PHOTO_ID_UNDEF = @"Photo ID is undefined";
 NSString* const E_PHOTO_ID_WRONG = @"Photo with specified ID wasn't found";
 NSString* const E_PHOTO_NOT_IMAGE = @"Data with specified ID isn't an image";
+NSString* const E_PHOTO_BUSY = @"Fetching of photo assets is in progress";
 
 - (void) pluginInitialize {
     _dateFormat = [[NSDateFormatter alloc] init];
@@ -121,10 +126,19 @@ NSString* const E_PHOTO_NOT_IMAGE = @"Data with specified ID isn't an image";
 }
 
 - (void) photos:(CDVInvokedUrlCommand*)command {
+    if (![self isNull:self.photosCommand]) {
+        [self failure:command withMessage:E_PHOTO_BUSY];
+        return;
+    }
+    self.photosCommand = command;
     CDVPhotos* __weak weakSelf = self;
     [self checkPermissionsOf:command andRun:^{
         NSArray* collectionIds = [weakSelf argOf:command atIndex:0 withDefault:nil];
         NSLog(@"photos: collectionIds=%@", collectionIds);
+
+        NSDictionary* options = [weakSelf argOf:command atIndex:1 withDefault:@{}];
+        int offset = [[weakSelf valueFrom:options byKey:P_LIST_OFFSET withDefault:@"0"] intValue];
+        int limit = [[weakSelf valueFrom:options byKey:P_LIST_LIMIT withDefault:@"0"] intValue];
 
         PHFetchResult<PHAssetCollection*>* fetchResultAssetCollections
         = collectionIds == nil || collectionIds.count == 0
@@ -132,13 +146,19 @@ NSString* const E_PHOTO_NOT_IMAGE = @"Data with specified ID isn't an image";
         : [PHAssetCollection fetchAssetCollectionsWithLocalIdentifiers:collectionIds
                                                                options:nil];
         if (fetchResultAssetCollections == nil) {
+            weakSelf.photosCommand = nil;
             [weakSelf failure:command withMessage:E_COLLECTION_MODE];
             return;
         }
 
+        int __block fetched = 0;
         NSMutableArray<NSDictionary*>* result = [NSMutableArray array];
         [fetchResultAssetCollections enumerateObjectsUsingBlock:
          ^(PHAssetCollection* _Nonnull assetCollection, NSUInteger idx, BOOL* _Nonnull stop) {
+             if ([weakSelf isNull:weakSelf.photosCommand]) {
+                 *stop = YES;
+                 return;
+             }
              PHFetchOptions* fetchOptions = [[PHFetchOptions alloc] init];
              fetchOptions.sortDescriptors = @[[NSSortDescriptor
                                                sortDescriptorWithKey:@"creationDate"
@@ -151,6 +171,10 @@ NSString* const E_PHOTO_NOT_IMAGE = @"Data with specified ID isn't an image";
 
              [fetchResultAssets enumerateObjectsUsingBlock:
               ^(PHAsset* _Nonnull asset, NSUInteger idx, BOOL* _Nonnull stop) {
+                  if ([weakSelf isNull:weakSelf.photosCommand]) {
+                      *stop = YES;
+                      return;
+                  }
                   PHAssetResource* resource = [weakSelf resourceForAsset:asset];
                   if (resource != nil) {
                       NSTextCheckingResult* match
@@ -166,26 +190,35 @@ NSString* const E_PHOTO_NOT_IMAGE = @"Data with specified ID isn't an image";
                                            uppercaseString];
                           NSString* type = weakSelf.extType[ext];
                           if (![weakSelf isNull:type]) {
-                              NSMutableDictionary<NSString*, NSObject*>* assetItem
-                              = [NSMutableDictionary dictionaryWithObjectsAndKeys:
-                                 asset.localIdentifier, P_ID,
-                                 name, P_NAME,
-                                 type, P_TYPE,
-                                 [weakSelf.dateFormat stringFromDate:asset.creationDate], P_DATE,
-                                 @(asset.pixelWidth), P_WIDTH,
-                                 @(asset.pixelHeight), P_HEIGHT,
-                                 nil];
-                              if (![weakSelf isNull:asset.location]) {
-                                  CLLocationCoordinate2D coord = asset.location.coordinate;
-                                  [assetItem setValue:@(coord.latitude) forKey:P_LAT];
-                                  [assetItem setValue:@(coord.longitude) forKey:P_LON];
+                              if (offset <= fetched) {
+                                  NSMutableDictionary<NSString*, NSObject*>* assetItem
+                                  = [NSMutableDictionary dictionaryWithObjectsAndKeys:
+                                     asset.localIdentifier, P_ID,
+                                     name, P_NAME,
+                                     type, P_TYPE,
+                                     [weakSelf.dateFormat stringFromDate:asset.creationDate], P_DATE,
+                                     @(asset.pixelWidth), P_WIDTH,
+                                     @(asset.pixelHeight), P_HEIGHT,
+                                     nil];
+                                  if (![weakSelf isNull:asset.location]) {
+                                      CLLocationCoordinate2D coord = asset.location.coordinate;
+                                      [assetItem setValue:@(coord.latitude) forKey:P_LAT];
+                                      [assetItem setValue:@(coord.longitude) forKey:P_LON];
+                                  }
+                                  [result addObject:assetItem];
+                                  if (limit > 0 && result.count >= limit) {
+                                      [weakSelf partial:command withArray:result];
+                                      [result removeAllObjects];
+                                      [NSThread sleepForTimeInterval:.03f];
+                                  }
                               }
-                              [result addObject:assetItem];
+                              ++fetched;
                           }
                       }
                   }
               }];
          }];
+        weakSelf.photosCommand = nil;
         [weakSelf success:command withArray:result];
     }];
 }
@@ -275,6 +308,11 @@ NSString* const E_PHOTO_NOT_IMAGE = @"Data with specified ID isn't an image";
              [weakSelf success:command withData:imageData];
          }];
     }];
+}
+
+- (void) cancel:(CDVInvokedUrlCommand*)command {
+    self.photosCommand = nil;
+    [self success:command];
 }
 
 #pragma mark - Auxiliary functions
@@ -373,35 +411,44 @@ NSString* const E_PHOTO_NOT_IMAGE = @"Data with specified ID isn't an image";
 
 #pragma mark - Callback methods
 
+- (void) success:(CDVInvokedUrlCommand*)command {
+    [self.commandDelegate
+     sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_OK]
+     callbackId:command.callbackId];
+}
+
 - (void) success:(CDVInvokedUrlCommand*)command withMessage:(NSString*)message {
     [self.commandDelegate
-     sendPluginResult:[CDVPluginResult
-                       resultWithStatus:CDVCommandStatus_OK
-                       messageAsString:message]
+     sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_OK
+                                        messageAsString:message]
      callbackId:command.callbackId];
 }
 
 - (void) success:(CDVInvokedUrlCommand*)command withArray:(NSArray*)array {
     [self.commandDelegate
-     sendPluginResult:[CDVPluginResult
-                       resultWithStatus:CDVCommandStatus_OK
-                       messageAsArray:array]
+     sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_OK
+                                         messageAsArray:array]
      callbackId:command.callbackId];
 }
 
 - (void) success:(CDVInvokedUrlCommand*)command withData:(NSData*)data {
     [self.commandDelegate
-     sendPluginResult:[CDVPluginResult
-                       resultWithStatus:CDVCommandStatus_OK
-                       messageAsArrayBuffer:data]
+     sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_OK
+                                   messageAsArrayBuffer:data]
      callbackId:command.callbackId];
+}
+
+- (void) partial:(CDVInvokedUrlCommand*)command withArray:(NSArray*)array {
+    CDVPluginResult* result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK
+                                                 messageAsArray:array];
+    [result setKeepCallbackAsBool:YES];
+    [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
 }
 
 - (void) failure:(CDVInvokedUrlCommand*)command withMessage:(NSString*)message {
     [self.commandDelegate
-     sendPluginResult:[CDVPluginResult
-                       resultWithStatus:CDVCommandStatus_ERROR
-                       messageAsString:message]
+     sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR
+                                        messageAsString:message]
      callbackId:command.callbackId];
 }
 

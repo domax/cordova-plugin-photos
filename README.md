@@ -33,7 +33,7 @@ An optional `option` argument supports only one field `collectionMode` with the 
 | `ALBUMS`  | Return list of all regular albums you create and name. |
 | `MOMENTS` | Return list of albums that are automatically generated based on date and location. |
 
-For Android platform `SMART`, `ALBUMS` and `MOMENTS` all works as `ALBUMS`.
+For Android platform `SMART`, `ALBUMS` and `MOMENTS` all work as `ALBUMS`.
 
 #### Callbacks
 
@@ -52,10 +52,10 @@ The `failure` callback function takes a string argument with error description.
 // Get all the user's collections/albums
 Photos.collections({"collectionMode": "ALBUMS"},
 	function(albums) {
-		console.log("Albums: " + JSON.stringify(albums));
+		console.log(albums);
 	},
 	function(error) {
-		console.log("Error: " + error);
+		console.error("Error: " + error);
 	});
 ```
 
@@ -65,10 +65,24 @@ This function requests the list of photo assets that are available in specified 
 
 #### Arguments
 
-An optional `collectionIds` argument takes an array of collection IDs that are obtained
-with [`collections()`][h1] method. You may specify only one ID as a string argument.
+1. An optional `collectionIds` argument takes an array of collection IDs that are obtained
+	with [`collections()`][h1] method. You may specify only one ID as a string argument.
+	<br>If you omit `collectionIds` argument then only assets from device's Camera Roll are returned.
+	
+2. An optional `options` argument that supports the following keys and according values:
 
-If you omit `collectionIds` argument then only assets from device's Camera Roll are returned. 
+	| Key      | Type | Default | Action |
+	|:-------- |:----:|:-------:|:------ |
+	| `offset` | int  | `0`     | Amount of first N photos that should be skipped during fetch. |
+	| `limit`  | int  | `0`     | Maximal number of photos that should be returned to client at once during fetch. |
+
+__Please be warned__ that *`limit` option doesn't stop fetching process* - it just limits the amount
+of fetched photo records that are aggregated in plugin for client.
+So that if you use `limit` option then you may get several `success` callback calls,
+where each of them brings to you next aggregated bundle of fetched photos.
+
+If you want to stop fetching, you have to explicitly call [`cancel()`][h5] function,
+that will break the running fetch process.
 
 #### Callbacks
 
@@ -88,15 +102,50 @@ array of objects with the following structure:
 
 The `failure` callback function takes a string argument with error description.
 
-#### Example:
+#### Examples:
+
 ```js
-// Get all the photos' metadata that are available in Camera Roll now
+// 1: Get all the photos' metadata that are available in Camera Roll now
 Photos.photos( 
 	function(photos) {
-		console.log("Photos: " + JSON.stringify(photos));
+		console.log(photos);
 	},
 	function(error) {
-		console.log("Error: " + error);
+		console.error("Error: " + error);
+	});
+```
+
+More complicated example with full set of arguments and fetching cancelling:
+
+```js
+// 2. Get all photos from albums "XXXXXX" and "YYYYYY"
+//    partially, by 10 record bundles, skipping 100 first photos,
+//    and only first 2 bundles maximum is needed.
+var bundleSize = 10;
+var bundleMax = 2;
+var bundle = 0;
+Photos.photos(
+	["XXXXXX", "YYYYYY"],
+	{"offset": 100, "limit": bundleSize},
+	function(photos) {
+		++bundle;
+		// We need only 2 bundles, so let's stop fetching
+		// as soon as possible we've got them
+		if (bundle >= bundleMax) 
+			Photos.cancel();
+		// This code will be called several times 
+		// in case if amount of your photos is at least 
+		// 100 (offset) + 10 (limit) = 110
+		console.log("Bundle #" + bundle + ": " + JSON.stringify(photos));
+		if (photos.length < bundleSize) {
+			// It is guaranteed that if limit option is set 
+			// then there will be the last call with photos.length < bundleSize,
+			// so that you may get the last call with photos.length == 0
+			console.log("That's it - no more bundles");
+		}
+	},
+	function(error) {
+		console.error("Error: " + error);
 	});
 ```
 
@@ -144,10 +193,10 @@ The `failure` callback function takes a string argument with error description.
 Photos.thumbnail("XXXXXX",
 	{"asDataUrl": true, "dimension":300, "quality":70},
 	function(data) {
-		console.log("Thumbnail: " + data);
+		console.log(data);
 	},
 	function(error) {
-		console.log("Error: " + error);
+		console.error("Error: " + error);
 	});
 ```
 
@@ -168,17 +217,26 @@ is an [ArrayBuffer][3] that you may use in canvas or save it as a file with [cor
 
 The `failure` callback function takes a string argument with error description.
 
-#### Example:
+#### Example
 ```js
 // Get the original data of photo with ID "XXXXXX": 
 Photos.image("XXXXXX",
 	function(data) {
-		console.log("Photo: " + data);
+		console.log(data);
 	},
 	function(error) {
-		console.log("Error: " + error);
+		console.error("Error: " + error);
 	});
 ```
+
+### Stop long fetching process - `cancel()`
+
+This is no-argument function that simply breaks any long fetching process that runs in the background.
+Though, it is used with only [`photos()`][h2] function now.
+
+#### Example
+
+Please, see [`photos()`][h2] examples for details.
 
 More Info
 ---------
@@ -191,6 +249,7 @@ For more info on plugins see the [Plugin Development Guide][7].
 [h2]: #get-photo-assets---photos
 [h3]: #generate-a-thumbnail-of-given-photo---thumbnail
 [h4]: #get-original-data-of-photo---image
+[h5]: #stop-long-fetching-process---cancel
 
 [1]: https://www.w3.org/TR/NOTE-datetime
 [2]: https://en.wikipedia.org/wiki/Data_URI_scheme

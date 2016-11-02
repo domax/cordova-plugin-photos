@@ -70,6 +70,9 @@ public class Photos extends CordovaPlugin {
 	private static final String P_C_MODE_ALBUMS = "ALBUMS";
 	private static final String P_C_MODE_MOMENTS = "MOMENTS";
 
+	private static final String P_LIST_OFFSET = "offset";
+	private static final String P_LIST_LIMIT = "limit";
+
 	private static final String T_DATA_URL = "data:image/jpeg;base64,";
 	private static final String T_DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ssZZZZZ";
 
@@ -79,6 +82,7 @@ public class Photos extends CordovaPlugin {
 	private static final String E_COLLECTION_MODE = "Unsupported collection mode";
 	private static final String E_PHOTO_ID_UNDEF = "Photo ID is undefined";
 	private static final String E_PHOTO_ID_WRONG = "Photo with specified ID wasn't found";
+	private static final String E_PHOTO_BUSY = "Fetching of photo assets is in progress";
 
 	private static final int DEF_SIZE = 120;
 	private static final int DEF_QUALITY = 80;
@@ -95,26 +99,51 @@ public class Photos extends CordovaPlugin {
 
 	private String action;
 	private JSONArray data;
-	private CallbackContext callbackContext;
+	private CallbackContext permissionCallbackContext;
+	private volatile CallbackContext photosCallbackContext;
 
 	@Override
-	public boolean execute(String action, JSONArray data, CallbackContext callbackContext) throws JSONException {
+	public boolean execute(
+			String action, final JSONArray data, final CallbackContext callbackContext) throws JSONException {
 		switch (action) {
 			case "collections":
 				if (checkPermission(action, data, callbackContext))
-					collections(data.optJSONObject(0), callbackContext);
+					cordova.getThreadPool().execute(new Runnable() {
+						@Override
+						public void run() {
+							collections(data.optJSONObject(0), callbackContext);
+						}
+					});
 				break;
 			case "photos":
 				if (checkPermission(action, data, callbackContext))
-					photos(data.optJSONArray(0), callbackContext);
+					cordova.getThreadPool().execute(new Runnable() {
+						@Override
+						public void run() {
+							photos(data.optJSONArray(0), data.optJSONObject(1), callbackContext);
+						}
+					});
 				break;
 			case "thumbnail":
 				if (checkPermission(action, data, callbackContext))
-					thumbnail(data.optString(0, null), data.optJSONObject(1), callbackContext);
+					cordova.getThreadPool().execute(new Runnable() {
+						@Override
+						public void run() {
+							thumbnail(data.optString(0, null), data.optJSONObject(1), callbackContext);
+						}
+					});
 				break;
 			case "image":
 				if (checkPermission(action, data, callbackContext))
-					image(data.optString(0, null), callbackContext);
+					cordova.getThreadPool().execute(new Runnable() {
+						@Override
+						public void run() {
+							image(data.optString(0, null), callbackContext);
+						}
+					});
+				break;
+			case "cancel":
+				cancel(callbackContext);
 				break;
 			default:
 				return false;
@@ -126,7 +155,7 @@ public class Photos extends CordovaPlugin {
 		if (!PermissionHelper.hasPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)) {
 			this.action = action;
 			this.data = data;
-			this.callbackContext = callbackContext;
+			this.permissionCallbackContext = callbackContext;
 			PermissionHelper.requestPermission(this, 0, Manifest.permission.READ_EXTERNAL_STORAGE);
 			return false;
 		}
@@ -137,11 +166,11 @@ public class Photos extends CordovaPlugin {
 	public void onRequestPermissionResult(int requestCode, String[] permissions, int[] grantResults) throws JSONException {
 		for (int grantResult : grantResults) {
 			if (grantResult == PackageManager.PERMISSION_DENIED) {
-				this.callbackContext.error(E_PERMISSION);
+				this.permissionCallbackContext.error(E_PERMISSION);
 				return;
 			}
 		}
-		execute(action, data, callbackContext);
+		execute(action, data, permissionCallbackContext);
 	}
 
 	private void collections(final JSONObject options, final CallbackContext callbackContext) {
@@ -185,7 +214,13 @@ public class Photos extends CordovaPlugin {
 		}
 	}
 
-	private void photos(final JSONArray collectionIds, final CallbackContext callbackContext) {
+	private void photos(final JSONArray collectionIds, final JSONObject options, final CallbackContext callbackContext) {
+		if (getPhotosCallbackContext() != null) {
+			callbackContext.error(E_PHOTO_BUSY);
+			return;
+		}
+		setPhotosCallbackContext(callbackContext);
+
 		final String selection;
 		final String[] selectionArgs;
 		if (collectionIds != null && collectionIds.length() > 0) {
@@ -195,6 +230,10 @@ public class Photos extends CordovaPlugin {
 			selection = BUCKET_DISPLAY_NAME + "=?";
 			selectionArgs = new String[]{BN_CAMERA};
 		}
+
+		final int offset = options != null ? options.optInt(P_LIST_OFFSET, 0) : 0;
+		final int limit = options != null ? options.optInt(P_LIST_LIMIT, 0) : 0;
+
 		try (final Cursor cursor = query(
 				cordova.getActivity().getContentResolver(),
 				EXTERNAL_CONTENT_URI,
@@ -202,29 +241,43 @@ public class Photos extends CordovaPlugin {
 				selection,
 				selectionArgs,
 				DATE_TAKEN + " DESC")) {
-			final JSONArray result = new JSONArray();
+			int fetched = 0;
+			JSONArray result = new JSONArray();
 			if (cursor.moveToFirst()) {
 				do {
-					final JSONObject item = new JSONObject();
-					item.put(P_ID, cursor.getString(cursor.getColumnIndex(_ID)));
-					item.put(P_NAME, cursor.getString(cursor.getColumnIndex(TITLE)));
-					item.put(P_TYPE, "image/jpeg");
-					long ts = cursor.getLong(cursor.getColumnIndex(DATE_TAKEN));
-					if (ts != 0) item.put(P_DATE, DF.format(new Date(ts)));
-					item.put(P_WIDTH, cursor.getInt(cursor.getColumnIndex(WIDTH)));
-					item.put(P_HEIGHT, cursor.getInt(cursor.getColumnIndex(HEIGHT)));
-					double latitude = cursor.getDouble(cursor.getColumnIndex(LATITUDE));
-					double longitude = cursor.getDouble(cursor.getColumnIndex(LONGITUDE));
-					if (latitude != 0 || longitude != 0) {
-						item.put(P_LAT, latitude);
-						item.put(P_LON, longitude);
+					if (getPhotosCallbackContext() == null) break;
+					if (offset <= fetched) {
+						final JSONObject item = new JSONObject();
+						item.put(P_ID, cursor.getString(cursor.getColumnIndex(_ID)));
+						item.put(P_NAME, cursor.getString(cursor.getColumnIndex(TITLE)));
+						item.put(P_TYPE, "image/jpeg");
+						long ts = cursor.getLong(cursor.getColumnIndex(DATE_TAKEN));
+						if (ts != 0) item.put(P_DATE, DF.format(new Date(ts)));
+						item.put(P_WIDTH, cursor.getInt(cursor.getColumnIndex(WIDTH)));
+						item.put(P_HEIGHT, cursor.getInt(cursor.getColumnIndex(HEIGHT)));
+						double latitude = cursor.getDouble(cursor.getColumnIndex(LATITUDE));
+						double longitude = cursor.getDouble(cursor.getColumnIndex(LONGITUDE));
+						if (latitude != 0 || longitude != 0) {
+							item.put(P_LAT, latitude);
+							item.put(P_LON, longitude);
+						}
+						result.put(item);
+						if (limit > 0 && result.length() >= limit) {
+							PluginResult pr = new PluginResult(PluginResult.Status.OK, result);
+							pr.setKeepCallback(true);
+							callbackContext.sendPluginResult(pr);
+							result = new JSONArray();
+							Thread.sleep(30);
+						}
 					}
-					result.put(item);
+					++fetched;
 				} while (cursor.moveToNext());
 			}
+			setPhotosCallbackContext(null);
 			callbackContext.success(result);
 		} catch (Exception e) {
 			Log.e(TAG, e.getMessage(), e);
+			setPhotosCallbackContext(null);
 			callbackContext.error(e.getMessage());
 		}
 	}
@@ -269,6 +322,19 @@ public class Photos extends CordovaPlugin {
 			Log.e(TAG, e.getMessage(), e);
 			callbackContext.error(e.getMessage());
 		}
+	}
+
+	private void cancel(final CallbackContext callbackContext) {
+		setPhotosCallbackContext(null);
+		callbackContext.success();
+	}
+
+	private synchronized CallbackContext getPhotosCallbackContext() {
+		return this.photosCallbackContext;
+	}
+
+	private synchronized void setPhotosCallbackContext(CallbackContext photosCallbackContext) {
+		this.photosCallbackContext = photosCallbackContext;
 	}
 
 	private String repeatText(int count, String text, String separator) {
