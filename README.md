@@ -47,7 +47,7 @@ array of objects with the following structure:
 
 The `failure` callback function takes a string argument with error description.
 
-#### Example:
+#### Example
 ```js
 // Get all the user's collections/albums
 Photos.collections({"collectionMode": "ALBUMS"},
@@ -102,7 +102,7 @@ array of objects with the following structure:
 
 The `failure` callback function takes a string argument with error description.
 
-#### Examples:
+#### Examples
 
 ```js
 // 1: Get all the photos' metadata that are available in Camera Roll now
@@ -185,7 +185,7 @@ depends on `options.asDataUrl` flag:
 
 The `failure` callback function takes a string argument with error description.
 
-#### Example:
+#### Example
 ```js
 // Generate a thumbnail of photo with ID "XXXXXX" as data URL
 // with maximal dimension by width or height of 300 pixels
