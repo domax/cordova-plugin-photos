@@ -73,8 +73,8 @@ This function requests the list of photo assets that are available in specified 
 
 	| Key      | Type | Default | Action |
 	|:-------- |:----:|:-------:|:------ |
-	| `offset` | int  | `0`     | Amount of first N photos that should be skipped during fetch. |
-	| `limit`  | int  | `0`     | Maximal number of photos that should be returned to client at once during fetch. |
+	| `offset` | int  | `0`     | Amount of first N photos that should be skipped during fetch. Less than `0` means `0`. |
+	| `limit`  | int  | `0`     | Maximal number of photos that should be returned to client at once during fetch. `0` or less means no limit. |
 
 __Please be warned__ that *`limit` option doesn't stop fetching process* - it just limits the amount
 of fetched photo records that are aggregated in plugin for client.
@@ -124,8 +124,7 @@ More complicated example with full set of arguments and fetching cancelling:
 var bundleSize = 10;
 var bundleMax = 2;
 var bundle = 0;
-Photos.photos(
-	["XXXXXX", "YYYYYY"],
+Photos.photos(["XXXXXX", "YYYYYY"],
 	{"offset": 100, "limit": bundleSize},
 	function(photos) {
 		++bundle;
@@ -191,7 +190,7 @@ The `failure` callback function takes a string argument with error description.
 // with maximal dimension by width or height of 300 pixels
 // and JPEG guality of 70:
 Photos.thumbnail("XXXXXX",
-	{"asDataUrl": true, "dimension":300, "quality":70},
+	{"asDataUrl": true, "dimension": 300, "quality": 70},
 	function(data) {
 		console.log(data);
 	},
