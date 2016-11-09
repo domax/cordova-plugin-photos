@@ -256,7 +256,11 @@ NSString* const E_PHOTO_BUSY = @"Fetching of photo assets is in progress";
                  [weakSelf failure:command withMessage:E_PHOTO_NO_DATA];
                  return;
              }
-             NSData* data = UIImageJPEGRepresentation(result, (CGFloat) quality / 100);
+             UIGraphicsBeginImageContext(result.size);
+             [result drawInRect:CGRectMake(0, 0, result.size.width, result.size.height)];
+             UIImage* image = UIGraphicsGetImageFromCurrentImageContext();
+             UIGraphicsEndImageContext();
+             NSData* data = UIImageJPEGRepresentation(image, (CGFloat) quality / 100);
              if ([weakSelf isNull:data]) {
                  [weakSelf failure:command withMessage:E_PHOTO_THUMB];
                  return;
