@@ -188,7 +188,7 @@ The `failure` callback function takes a string argument with error description.
 ```js
 // Generate a thumbnail of photo with ID "XXXXXX" as data URL
 // with maximal dimension by width or height of 300 pixels
-// and JPEG guality of 70:
+// and JPEG quality of 70:
 Photos.thumbnail("XXXXXX",
 	{"asDataUrl": true, "dimension": 300, "quality": 70},
 	function(data) {
