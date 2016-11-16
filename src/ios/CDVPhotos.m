@@ -240,6 +240,7 @@ NSString* const E_PHOTO_BUSY = @"Fetching of photo assets is in progress";
         PHImageRequestOptions* reqOptions = [[PHImageRequestOptions alloc] init];
         reqOptions.resizeMode = PHImageRequestOptionsResizeModeExact;
         reqOptions.networkAccessAllowed = YES;
+        reqOptions.synchronous = YES;
 
         [[PHImageManager defaultManager]
          requestImageForAsset:asset

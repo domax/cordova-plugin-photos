@@ -120,7 +120,7 @@ More complicated example with full set of arguments and fetching cancelling:
 ```js
 // 2. Get all photos from albums "XXXXXX" and "YYYYYY"
 //    partially, by 10 record bundles, skipping 100 first photos,
-//    and only first 2 bundles maximum is needed.
+//    and only first 2 bundles maximum are needed.
 var bundleSize = 10;
 var bundleMax = 2;
 var bundle = 0;
