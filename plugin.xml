@@ -7,6 +7,8 @@
 	<name>Photos</name>
 	<keywords>cordova, camera, file, exif, geo, location, geolocation, tag</keywords>
 
+	<dependency id="cordova-plugin-compat" version="^1.0.0" />
+
 	<engines>
 		<engine name="cordova" version=">=3.4.0"/>
 	</engines>
