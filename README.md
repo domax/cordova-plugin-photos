@@ -18,6 +18,25 @@ or last, fresh version right from Github:
 
     $ cordova plugin add https://github.com/domax/cordova-plugin-photos.git --save    
 
+#### Android Quirks
+
+Since Android plugin implementation is written on Java 7, you have to switch your project to Java 7 or 8.
+
+If your project is Gradle-driven, just open your project's `build.gradle` script 
+and replace `JavaVersion.VERSION_1_6` to `JavaVersion.VERSION_1_7`, like that:
+```gradle
+	compileOptions {
+		sourceCompatibility JavaVersion.VERSION_1_7
+		targetCompatibility JavaVersion.VERSION_1_7
+	}
+```
+
+Or, you can do the same in Android Studio:
+
+_File -> Project Structure -> Modules -> "android" -> Properties_
+
+And select "1.7" or "1.8" in "Source/Target Compatibility" combo boxes.
+
 ### Get asset collections/albums - `collections()`
 
 This function requests the list of available photo collections (or albums) depending on platform.
@@ -179,7 +198,8 @@ The resulting data of argument that comes into `success` callback function
 depends on `options.asDataUrl` flag:
 - if it's `true` then data is returned as string in [Data URL][2] format
 	that you e.g. may use as `src` attribute in `img` tag;
-- otherwise data is returned as an [ArrayBuffer][3] that you may use in canvas 
+- otherwise data is returned as an [ArrayBuffer][3] that you may 
+	use in canvas (you'll need [JPEG decoder][8] for that) 
 	or save it as a file with [cordova-plugin-file][5]. 
 
 The `failure` callback function takes a string argument with error description.
@@ -212,7 +232,8 @@ A required `photoId` argument that is a photo ID you obtained by [`photos()`][h2
 #### Callbacks
 
 The resulting data of argument that comes into `success` callback function
-is an [ArrayBuffer][3] that you may use in canvas or save it as a file with [cordova-plugin-file][5]. 
+is an [ArrayBuffer][3] that you may use in canvas (you'll need [JPEG decoder][8] for `image/jpeg` data)
+or save it as a file with [cordova-plugin-file][5].
 
 The `failure` callback function takes a string argument with error description.
 
@@ -257,3 +278,4 @@ For more info on plugins see the [Plugin Development Guide][7].
 [5]: https://cordova.apache.org/docs/en/latest/reference/cordova-plugin-file/#write-to-a-file-
 [6]: https://cordova.apache.org/docs/en/latest/guide/cli/
 [7]: https://cordova.apache.org/docs/en/latest/guide/hybrid/plugins/
+[8]: https://github.com/notmasteryet/jpgjs
