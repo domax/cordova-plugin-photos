@@ -23,6 +23,9 @@
  */
 #import <Cordova/CDV.h>
 
+/*
+ * https://developer.apple.com/reference/photos?language=objc
+ */
 @interface CDVPhotos : CDVPlugin
 
 - (void) collections:(CDVInvokedUrlCommand*)command;

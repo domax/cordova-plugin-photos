@@ -28,7 +28,6 @@ import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.net.Uri;
-import android.provider.MediaStore;
 import android.util.Base64;
 import android.util.Log;
 
@@ -39,6 +38,7 @@ import org.json.JSONObject;
 
 import static android.provider.MediaStore.Images.Media.*;
 import static android.provider.MediaStore.Images.Thumbnails.MINI_KIND;
+import static android.provider.MediaStore.Images.Thumbnails.getThumbnail;
 
 import java.io.ByteArrayOutputStream;
 import java.text.SimpleDateFormat;
@@ -47,6 +47,13 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
+/**
+ * Useful links:
+ * <ul>
+ * <li><a href='https://developer.android.com/reference/android/provider/MediaStore.Images.Media.html'>MediaStore.Images.Media</a></li>
+ * <li><a href='https://developer.android.com/reference/android/provider/MediaStore.Images.Thumbnails.html'>MediaStore.Images.Thumbnails</a></li>
+ * </ul>
+ */
 public class Photos extends CordovaPlugin {
 
 	private static final String TAG = Photos.class.getSimpleName();
@@ -289,7 +296,7 @@ public class Photos extends CordovaPlugin {
 		try {
 			if (photoId == null || photoId.isEmpty() || "null".equalsIgnoreCase(photoId))
 				throw new IllegalArgumentException(E_PHOTO_ID_UNDEF);
-			final Bitmap thumb = MediaStore.Images.Thumbnails.getThumbnail(
+			final Bitmap thumb = getThumbnail(
 					cordova.getActivity().getContentResolver(), Long.parseLong(photoId), MINI_KIND, null);
 			if (thumb == null) throw new IllegalStateException(E_PHOTO_ID_WRONG);
 
@@ -311,7 +318,7 @@ public class Photos extends CordovaPlugin {
 		try {
 			if (photoId == null || photoId.isEmpty() || "null".equalsIgnoreCase(photoId))
 				throw new IllegalArgumentException(E_PHOTO_ID_UNDEF);
-			final Bitmap image = MediaStore.Images.Media.getBitmap(
+			final Bitmap image = getBitmap(
 					cordova.getActivity().getContentResolver(),
 					Uri.withAppendedPath(EXTERNAL_CONTENT_URI, photoId));
 			if (image == null) throw new IllegalStateException(E_PHOTO_ID_WRONG);
