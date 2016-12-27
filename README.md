@@ -151,44 +151,44 @@ The `failure` callback function takes a string argument with error description.
 #### Examples
 
 1. Get all the photos' metadata that are available in Camera Roll now:
-```js
-Photos.photos( 
-	function(photos) {
-		console.log(photos);
-	},
-	function(error) {
-		console.error("Error: " + error);
-	});
-```
+    ```js
+    Photos.photos( 
+        function(photos) {
+            console.log(photos);
+        },
+        function(error) {
+            console.error("Error: " + error);
+        });
+    ```
 
 2. More complicated example with full set of arguments and fetching cancelling:
-```js
-// Get all photos from albums "XXXXXX" and "YYYYYY"
-// partially, by 10 record bundles, skipping 100 first photos,
-// and only first 2 bundles maximum are needed.
-var bundleSize = 10;
-var bundleMax = 2;
-var bundle = 0;
-Photos.photos(["XXXXXX", "YYYYYY"],
-	{"offset": 100, "limit": bundleSize},
-	function(photos) {
-		++bundle;
-		// We need only 2 bundles, so let's stop fetching
-		// as soon as possible we've got them
-		if (bundle >= bundleMax) 
-			Photos.cancel();
-		// This code will be called several times 
-		// in case if amount of your photos is at least 
-		// 100 (offset) + 10 (limit) = 110
-		console.log("Bundle #" + bundle + ": " + JSON.stringify(photos));
-		if (photos.length < bundleSize) {
-			// It is guaranteed that if limit option is set 
-			// then there will be the last call with photos.length < bundleSize,
-			// so that you may get the last call with photos.length == 0
-			console.log("That's it - no more bundles");
-		}
-	}, console.error);
-```
+    ```js
+    // Get all photos from albums "XXXXXX" and "YYYYYY"
+    // partially, by 10 record bundles, skipping 100 first photos,
+    // and only first 2 bundles maximum are needed.
+    var bundleSize = 10;
+    var bundleMax = 2;
+    var bundle = 0;
+    Photos.photos(["XXXXXX", "YYYYYY"],
+        {"offset": 100, "limit": bundleSize},
+        function(photos) {
+            ++bundle;
+            // We need only 2 bundles, so let's stop fetching
+            // as soon as possible we've got them
+            if (bundle >= bundleMax) 
+                Photos.cancel();
+            // This code will be called several times 
+            // in case if amount of your photos is at least 
+            // 100 (offset) + 10 (limit) = 110
+            console.log("Bundle #" + bundle + ": " + JSON.stringify(photos));
+            if (photos.length < bundleSize) {
+                // It is guaranteed that if limit option is set 
+                // then there will be the last call with photos.length < bundleSize,
+                // so that you may get the last call with photos.length == 0
+                console.log("That's it - no more bundles");
+            }
+        }, console.error);
+    ```
 
 ### Generate a thumbnail of given photo - `thumbnail()`
 
@@ -231,54 +231,54 @@ The `failure` callback function takes a string argument with error description.
 #### Examples
 
 1. Generate a thumbnail as [ArrayBuffer][3] and render it using [Blob][10] and a [blob-url][11] as image source: 
-```js
-// Do not forget to extend your Content-Security-Policy with explicit 'img-src blob:' rule
-Photos.thumbnail("XXXXXX",
-	function(data) {
-		var blob = new Blob([data], {type: "image/jpeg"});
-		var domURL = window.URL || window.webkitURL;
-		document.getElementsByTagName("img")[0].src = domURL.createObjectURL(blob);
-	},
-	function(error) {
-		console.error("Error: " + error);
-	});
-```
+    ```js
+    // Do not forget to extend your Content-Security-Policy with explicit 'img-src blob:' rule
+    Photos.thumbnail("XXXXXX",
+        function(data) {
+            var blob = new Blob([data], {type: "image/jpeg"});
+            var domURL = window.URL || window.webkitURL;
+            document.getElementsByTagName("img")[0].src = domURL.createObjectURL(blob);
+        },
+        function(error) {
+            console.error("Error: " + error);
+        });
+    ```
 
 2. Generate and render a thumbnail as [Data URL][2] with maximal dimension by width or height of 300 pixels:
-```js
-// Generate a thumbnail of photo with ID "XXXXXX" as data URL
-// with maximal dimension by width or height of 300 pixels
-// and JPEG quality of 70:
-Photos.thumbnail("XXXXXX",
-	{"asDataUrl": true, "dimension": 300, "quality": 70},
-	function(data) {
-		document.getElementsByTagName('img')[0].src = data;
-	},
-	function(error) {
-		console.error("Error: " + error);
-	});
-```
+    ```js
+    // Generate a thumbnail of photo with ID "XXXXXX" as data URL
+    // with maximal dimension by width or height of 300 pixels
+    // and JPEG quality of 70:
+    Photos.thumbnail("XXXXXX",
+        {"asDataUrl": true, "dimension": 300, "quality": 70},
+        function(data) {
+            document.getElementsByTagName('img')[0].src = data;
+        },
+        function(error) {
+            console.error("Error: " + error);
+        });
+    ```
 
 3. Generate a thumbnail as [ArrayBuffer][3], store it as a temporary file on device
    and then render it as an image source (requires [cordova-plugin-file][5] to be installed):
-```js
-var photoId = "XXXXXX";
-Photos.thumbnail(photoId, {"dimension": 300, "quality": 70},
-	function(data) {
-		requestFileSystem(LocalFileSystem.TEMPORARY, 1024*1024, function(fs) {
-			var fn = photoId.replace(/\W/g, "_") + "-thumb.jpg";
-			fs.root.getFile(fn, {create: true, exclusive: false}, function(entry) {
-				entry.createWriter(function(writer) {
-					writer.onwriteend = function() {
-						document.getElementsByTagName('img')[0].src = entry.toURL();
-					};
-					writer.onerror = console.error;
-					writer.write(new Blob([data], {type: "image/jpeg"}));
-				}, console.error);
-			}, console.error);
-		}, console.error);
-	}, console.error);
-```
+    ```js
+    var photoId = "XXXXXX";
+    Photos.thumbnail(photoId, {"dimension": 300, "quality": 70},
+        function(data) {
+            requestFileSystem(LocalFileSystem.TEMPORARY, 1024*1024, function(fs) {
+                var fn = photoId.replace(/\W/g, "_") + "-thumb.jpg";
+                fs.root.getFile(fn, {create: true, exclusive: false}, function(entry) {
+                    entry.createWriter(function(writer) {
+                        writer.onwriteend = function() {
+                            document.getElementsByTagName('img')[0].src = entry.toURL();
+                        };
+                        writer.onerror = console.error;
+                        writer.write(new Blob([data], {type: "image/jpeg"}));
+                    }, console.error);
+                }, console.error);
+            }, console.error);
+        }, console.error);
+    ```
 
 ### Get original data of photo - `image()`
 
@@ -303,88 +303,88 @@ The `failure` callback function takes a string argument with error description.
 #### Examples
 
 1. Render [ArrayBuffer][3] image using [Blob][10] and a [blob-url][11] as image source:
-```js
-// Do not forget to extend your Content-Security-Policy with explicit 'img-src blob:' rule
-var photo = {id: "XXXXXX", contentType: "image/jpeg"}; // Get it from Photos.photos()
-Photos.image(photo.id,
-	function(data) {
-		var blob = new Blob([data], {type: photo.contentType});
-		var domURL = window.URL || window.webkitURL;
-		document.getElementsByTagName("img")[0].src = domURL.createObjectURL(blob);
-	},
-	function(error) {
-		console.error("Error: " + error);
-	});
-```
+    ```js
+    // Do not forget to extend your Content-Security-Policy with explicit 'img-src blob:' rule
+    var photo = {id: "XXXXXX", contentType: "image/jpeg"}; // Get it from Photos.photos()
+    Photos.image(photo.id,
+        function(data) {
+            var blob = new Blob([data], {type: photo.contentType});
+            var domURL = window.URL || window.webkitURL;
+            document.getElementsByTagName("img")[0].src = domURL.createObjectURL(blob);
+        },
+        function(error) {
+            console.error("Error: " + error);
+        });
+    ```
 
 2. Draw [ArrayBuffer][3] PNG screenshot into canvas (requires [PNG decoder][9] to be included): 
-```js
-Photos.image("XXXXXX",
-	function(data) {
-		// you know MIME type from Photos.photos() result
-		var png = new PNG(new Uint8Array(data));
-		png.render(document.getElementsByTagName('canvas')[0]);
-	},
-	function(error) {
-		console.error("Error: " + error);
-	});
-```
+    ```js
+    Photos.image("XXXXXX",
+        function(data) {
+            // you know MIME type from Photos.photos() result
+            var png = new PNG(new Uint8Array(data));
+            png.render(document.getElementsByTagName('canvas')[0]);
+        },
+        function(error) {
+            console.error("Error: " + error);
+        });
+    ```
 
 3. Draw [ArrayBuffer][3] JPEG photo into canvas (requires [JPEG decoder][8] to be included): 
-```js
-Photos.image("XXXXXX",
-	function(data) {
-		// you know MIME type from Photos.photos() result
-		var parser = new JpegDecoder();
-		parser.parse(new Uint8Array(data));
-		var numComponents = parser.numComponents;
-		var width = parser.width;
-		var height = parser.height;
-		var decoded = parser.getData(width, height);
-		var canvas = document.getElementsByTagName('canvas')[0];
-		canvas.width = width;
-		canvas.height = height;
-		var ctx = canvas.getContext('2d');
-		var imageData = ctx.createImageData(width, height);
-		var imageBytes = imageData.data;
-		for (var i = 0, j = 0, ii = width * height * 4; i < ii;) {
-			imageBytes[i++] = decoded[j++];
-			imageBytes[i++] = numComponents === 3 ? decoded[j++] : decoded[j - 1];
-			imageBytes[i++] = numComponents === 3 ? decoded[j++] : decoded[j - 1];
-			imageBytes[i++] = 255;
-		}
-		ctx.putImageData(imageData, 0, 0);
-	},
-	function(error) {
-		console.error("Error: " + error);
-	});
-```
+    ```js
+    Photos.image("XXXXXX",
+        function(data) {
+            // you know MIME type from Photos.photos() result
+            var parser = new JpegDecoder();
+            parser.parse(new Uint8Array(data));
+            var numComponents = parser.numComponents;
+            var width = parser.width;
+            var height = parser.height;
+            var decoded = parser.getData(width, height);
+            var canvas = document.getElementsByTagName('canvas')[0];
+            canvas.width = width;
+            canvas.height = height;
+            var ctx = canvas.getContext('2d');
+            var imageData = ctx.createImageData(width, height);
+            var imageBytes = imageData.data;
+            for (var i = 0, j = 0, ii = width * height * 4; i < ii;) {
+                imageBytes[i++] = decoded[j++];
+                imageBytes[i++] = numComponents === 3 ? decoded[j++] : decoded[j - 1];
+                imageBytes[i++] = numComponents === 3 ? decoded[j++] : decoded[j - 1];
+                imageBytes[i++] = 255;
+            }
+            ctx.putImageData(imageData, 0, 0);
+        },
+        function(error) {
+            console.error("Error: " + error);
+        });
+    ```
 
 4. Full simple caching solution of getting and rendering original image
    as an image source (requires [cordova-plugin-file][5] to be installed):
-```js
-var photo = {id: "XXXXXX", contentType: "image/jpeg"}; // Get it from Photos.photos()
-var img = document.getElementsByTagName('img')[0];     // Get it from your DOM
-requestFileSystem(LocalFileSystem.TEMPORARY, 3*1024*1024, function(fs) {
-	fs.root.getFile(
-		photo.id.replace(/\W/g, "_") + photo.contentType.replace(/^image\//, "."),
-		{create: true, exclusive: false},
-		function(entry) {
-			entry.file(function(file) {
-				if (file.size == 0) {
-					Photos.image(photo.id, function(data) {
-						entry.createWriter(function(writer) {
-							writer.onwriteend = function() {img.src = entry.toURL()};
-							writer.onerror = console.error;
-							writer.write(new Blob([data], {type: photo.contentType}));
-						}, console.error);
-					}, console.error);
-				} else img.src = entry.toURL();
-			}, console.error);
-		}, console.error);
-}, console.error);
-
-```
+    ```js
+    var photo = {id: "XXXXXX", contentType: "image/jpeg"}; // Get it from Photos.photos()
+    var img = document.getElementsByTagName('img')[0];     // Get it from your DOM
+    requestFileSystem(LocalFileSystem.TEMPORARY, 3*1024*1024, function(fs) {
+        fs.root.getFile(
+            photo.id.replace(/\W/g, "_") + photo.contentType.replace(/^image\//, "."),
+            {create: true, exclusive: false},
+            function(entry) {
+                entry.file(function(file) {
+                    if (file.size == 0) {
+                        Photos.image(photo.id, function(data) {
+                            entry.createWriter(function(writer) {
+                                writer.onwriteend = function() {img.src = entry.toURL()};
+                                writer.onerror = console.error;
+                                writer.write(new Blob([data], {type: photo.contentType}));
+                            }, console.error);
+                        }, console.error);
+                    } else img.src = entry.toURL();
+                }, console.error);
+            }, console.error);
+    }, console.error);
+    
+    ```
 
 ### Stop long fetching process - `cancel()`
 
