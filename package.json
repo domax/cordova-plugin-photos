@@ -1,6 +1,6 @@
 {
   "name": "cordova-plugin-photos",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "This Cordova/Phonegap plugin provides access to photo library on device.",
   "cordova": {
     "id": "cordova-plugin-photos",
