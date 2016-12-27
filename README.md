@@ -95,6 +95,7 @@ The `failure` callback function takes a string argument with error description.
 #### Examples
 
 1. Get all the user's collections/albums:
+
     ```js
     Photos.collections({"collectionMode": "ALBUMS"},
         function(albums) {
