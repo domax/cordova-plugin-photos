@@ -152,6 +152,7 @@ The `failure` callback function takes a string argument with error description.
 #### Examples
 
 1. Get all the photos' metadata that are available in Camera Roll now:
+
     ```js
     Photos.photos( 
         function(photos) {
@@ -163,6 +164,7 @@ The `failure` callback function takes a string argument with error description.
     ```
 
 2. More complicated example with full set of arguments and fetching cancelling:
+
     ```js
     // Get all photos from albums "XXXXXX" and "YYYYYY"
     // partially, by 10 record bundles, skipping 100 first photos,
@@ -231,7 +233,8 @@ The `failure` callback function takes a string argument with error description.
 
 #### Examples
 
-1. Generate a thumbnail as [ArrayBuffer][3] and render it using [Blob][10] and a [blob-url][11] as image source: 
+1. Generate a thumbnail as [ArrayBuffer][3] and render it using [Blob][10] and a [blob-url][11] as image source:
+
     ```js
     // Do not forget to extend your Content-Security-Policy with explicit 'img-src blob:' rule
     Photos.thumbnail("XXXXXX",
@@ -246,6 +249,7 @@ The `failure` callback function takes a string argument with error description.
     ```
 
 2. Generate and render a thumbnail as [Data URL][2] with maximal dimension by width or height of 300 pixels:
+
     ```js
     // Generate a thumbnail of photo with ID "XXXXXX" as data URL
     // with maximal dimension by width or height of 300 pixels
@@ -262,6 +266,7 @@ The `failure` callback function takes a string argument with error description.
 
 3. Generate a thumbnail as [ArrayBuffer][3], store it as a temporary file on device
    and then render it as an image source (requires [cordova-plugin-file][5] to be installed):
+
     ```js
     var photoId = "XXXXXX";
     Photos.thumbnail(photoId, {"dimension": 300, "quality": 70},
@@ -304,6 +309,7 @@ The `failure` callback function takes a string argument with error description.
 #### Examples
 
 1. Render [ArrayBuffer][3] image using [Blob][10] and a [blob-url][11] as image source:
+
     ```js
     // Do not forget to extend your Content-Security-Policy with explicit 'img-src blob:' rule
     var photo = {id: "XXXXXX", contentType: "image/jpeg"}; // Get it from Photos.photos()
@@ -318,7 +324,8 @@ The `failure` callback function takes a string argument with error description.
         });
     ```
 
-2. Draw [ArrayBuffer][3] PNG screenshot into canvas (requires [PNG decoder][9] to be included): 
+2. Draw [ArrayBuffer][3] PNG screenshot into canvas (requires [PNG decoder][9] to be included):
+
     ```js
     Photos.image("XXXXXX",
         function(data) {
@@ -331,7 +338,8 @@ The `failure` callback function takes a string argument with error description.
         });
     ```
 
-3. Draw [ArrayBuffer][3] JPEG photo into canvas (requires [JPEG decoder][8] to be included): 
+3. Draw [ArrayBuffer][3] JPEG photo into canvas (requires [JPEG decoder][8] to be included):
+
     ```js
     Photos.image("XXXXXX",
         function(data) {
@@ -363,6 +371,7 @@ The `failure` callback function takes a string argument with error description.
 
 4. Full simple caching solution of getting and rendering original image
    as an image source (requires [cordova-plugin-file][5] to be installed):
+
     ```js
     var photo = {id: "XXXXXX", contentType: "image/jpeg"}; // Get it from Photos.photos()
     var img = document.getElementsByTagName('img')[0];     // Get it from your DOM
