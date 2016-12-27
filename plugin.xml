@@ -2,7 +2,7 @@
 <plugin xmlns="http://www.phonegap.com/ns/plugins/1.0"
         xmlns:android="http://schemas.android.com/apk/res/android"
         id="cordova-plugin-photos"
-        version="1.0.4">
+        version="1.0.5">
 
 	<name>Photos</name>
 	<keywords>cordova, camera, file, exif, geo, location, geolocation, tag</keywords>
