@@ -187,10 +187,7 @@ Photos.photos(["XXXXXX", "YYYYYY"],
 			// so that you may get the last call with photos.length == 0
 			console.log("That's it - no more bundles");
 		}
-	},
-	function(error) {
-		console.error("Error: " + error);
-	});
+	}, console.error);
 ```
 
 ### Generate a thumbnail of given photo - `thumbnail()`
@@ -223,17 +220,19 @@ device's WebViews have limitations in processing large [Data URL][2]s.*
 The resulting data of argument that comes into `success` callback function
 depends on `options.asDataUrl` flag:
 - if it's `true` then data is returned as string in [Data URL][2] format
-	that you e.g. may use as `src` attribute in `img` tag;
-- otherwise data is returned as an [ArrayBuffer][3] that you may 
-	use in canvas (you'll need [JPEG decoder][8] for that) 
-	or save it as a file with [cordova-plugin-file][5]. 
+    that you e.g. may use as `src` attribute in `img` tag;
+- otherwise data is returned as an [ArrayBuffer][3] that you may:
+    * render as [blob-url][11] in `src` attribute of `img` tag;
+    * draw in canvas (you'll need [JPEG decoder][8] for that);
+    * save it as a file with [cordova-plugin-file][5].
 
 The `failure` callback function takes a string argument with error description.
 
 #### Examples
 
-1. Generate a thumbnail as [ArrayBuffer][3] and render it using using [Blob][10] and a [blob-url][11] as image source: 
+1. Generate a thumbnail as [ArrayBuffer][3] and render it using [Blob][10] and a [blob-url][11] as image source: 
 ```js
+// Do not forget to extend your Content-Security-Policy with explicit 'img-src blob:' rule
 Photos.thumbnail("XXXXXX",
 	function(data) {
 		var blob = new Blob([data], {type: "image/jpeg"});
@@ -260,6 +259,27 @@ Photos.thumbnail("XXXXXX",
 	});
 ```
 
+3. Generate a thumbnail as [ArrayBuffer][3], store it as a temporary file on device
+   and then render it as an image source (requires [cordova-plugin-file][5] to be installed):
+```js
+var photoId = "XXXXXX";
+Photos.thumbnail(photoId, {"dimension": 300, "quality": 70},
+	function(data) {
+		requestFileSystem(LocalFileSystem.TEMPORARY, 1024*1024, function(fs) {
+			var fn = photoId.replace(/\W/g, "_") + "-thumb.jpg";
+			fs.root.getFile(fn, {create: true, exclusive: false}, function(entry) {
+				entry.createWriter(function(writer) {
+					writer.onwriteend = function() {
+						document.getElementsByTagName('img')[0].src = entry.toURL();
+					};
+					writer.onerror = console.error;
+					writer.write(new Blob([data], {type: "image/jpeg"}));
+				}, console.error);
+			}, console.error);
+		}, console.error);
+	}, console.error);
+```
+
 ### Get original data of photo - `image()`
 
 This function requests original data of specified photo.
@@ -273,9 +293,10 @@ A required `photoId` argument that is a photo ID you obtained by [`photos()`][ph
 #### Callbacks
 
 The resulting data of argument that comes into `success` callback function
-is an [ArrayBuffer][3] that you may use in canvas (you'll need [JPEG decoder][8] for `image/jpeg` data 
-or [PNG decoder][9] for `image/png` data)
-or save it as a file with [cordova-plugin-file][5].
+is an [ArrayBuffer][3] that you may:
+* render as [blob-url][11] in `src` attribute of `img` tag;
+* draw in canvas (you'll need [JPEG decoder][8] for `image/jpeg` data or [PNG decoder][9] for `image/png` data);
+* save it as a file with [cordova-plugin-file][5].
 
 The `failure` callback function takes a string argument with error description.
 
@@ -283,10 +304,11 @@ The `failure` callback function takes a string argument with error description.
 
 1. Render [ArrayBuffer][3] image using [Blob][10] and a [blob-url][11] as image source:
 ```js
-Photos.image("XXXXXX",
+// Do not forget to extend your Content-Security-Policy with explicit 'img-src blob:' rule
+var photo = {id: "XXXXXX", contentType: "image/jpeg"}; // Get it from Photos.photos()
+Photos.image(photo.id,
 	function(data) {
-		// you know MIME type from Photos.photos() result
-		var blob = new Blob([data], {type: "image/jpeg"});
+		var blob = new Blob([data], {type: photo.contentType});
 		var domURL = window.URL || window.webkitURL;
 		document.getElementsByTagName("img")[0].src = domURL.createObjectURL(blob);
 	},
@@ -336,6 +358,32 @@ Photos.image("XXXXXX",
 	function(error) {
 		console.error("Error: " + error);
 	});
+```
+
+4. Full simple caching solution of getting and rendering original image
+   as an image source (requires [cordova-plugin-file][5] to be installed):
+```js
+var photo = {id: "XXXXXX", contentType: "image/jpeg"}; // Get it from Photos.photos()
+var img = document.getElementsByTagName('img')[0];     // Get it from your DOM
+requestFileSystem(LocalFileSystem.TEMPORARY, 3*1024*1024, function(fs) {
+	fs.root.getFile(
+		photo.id.replace(/\W/g, "_") + photo.contentType.replace(/^image\//, "."),
+		{create: true, exclusive: false},
+		function(entry) {
+			entry.file(function(file) {
+				if (file.size == 0) {
+					Photos.image(photo.id, function(data) {
+						entry.createWriter(function(writer) {
+							writer.onwriteend = function() {img.src = entry.toURL()};
+							writer.onerror = console.error;
+							writer.write(new Blob([data], {type: photo.contentType}));
+						}, console.error);
+					}, console.error);
+				} else img.src = entry.toURL();
+			}, console.error);
+		}, console.error);
+}, console.error);
+
 ```
 
 ### Stop long fetching process - `cancel()`
