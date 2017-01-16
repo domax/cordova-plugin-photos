@@ -239,7 +239,7 @@ The `failure` callback function takes a string argument with error description.
     // Do not forget to extend your Content-Security-Policy with explicit 'img-src blob:' rule
     Photos.thumbnail("XXXXXX",
         function(data) {
-            var blob = new Blob([data], {type: "image/jpeg"});
+            var blob = new Blob([data], {"type": "image/jpeg"});
             var domURL = window.URL || window.webkitURL;
             document.getElementsByTagName("img")[0].src = domURL.createObjectURL(blob);
         },
@@ -257,7 +257,7 @@ The `failure` callback function takes a string argument with error description.
     Photos.thumbnail("XXXXXX",
         {"asDataUrl": true, "dimension": 300, "quality": 70},
         function(data) {
-            document.getElementsByTagName('img')[0].src = data;
+            document.getElementsByTagName("img")[0].src = data;
         },
         function(error) {
             console.error("Error: " + error);
@@ -272,19 +272,21 @@ The `failure` callback function takes a string argument with error description.
     Photos.thumbnail(photoId, {"dimension": 300, "quality": 70},
         function(data) {
             requestFileSystem(LocalFileSystem.TEMPORARY, 1024*1024, function(fs) {
-                var fn = photoId.replace(/\W/g, "_") + "-thumb.jpg";
-                fs.root.getFile(fn, {create: true, exclusive: false}, function(entry) {
+                var fn = photoId.replace(/\W/g, "_") + "-thumb.jpeg";
+                fs.root.getFile(fn, {"create": true, "exclusive": false}, function(entry) {
                     entry.createWriter(function(writer) {
                         writer.onwriteend = function() {
-                            document.getElementsByTagName('img')[0].src = entry.toURL();
+                            document.getElementsByTagName("img")[0].src = entry.toURL();
                         };
                         writer.onerror = console.error;
-                        writer.write(new Blob([data], {type: "image/jpeg"}));
+                        writer.write(new Blob([data], {"type": "image/jpeg"}));
                     }, console.error);
                 }, console.error);
             }, console.error);
         }, console.error);
     ```
+
+   See full simple caching example in [`image()` examples](#examples-3).
 
 ### Get original data of photo - `image()`
 
@@ -312,10 +314,10 @@ The `failure` callback function takes a string argument with error description.
 
     ```js
     // Do not forget to extend your Content-Security-Policy with explicit 'img-src blob:' rule
-    var photo = {id: "XXXXXX", contentType: "image/jpeg"}; // Get it from Photos.photos()
+    var photo = {"id": "XXXXXX", "contentType": "image/jpeg"}; // Get it from Photos.photos()
     Photos.image(photo.id,
         function(data) {
-            var blob = new Blob([data], {type: photo.contentType});
+            var blob = new Blob([data], {"type": photo.contentType});
             var domURL = window.URL || window.webkitURL;
             document.getElementsByTagName("img")[0].src = domURL.createObjectURL(blob);
         },
@@ -331,7 +333,7 @@ The `failure` callback function takes a string argument with error description.
         function(data) {
             // you know MIME type from Photos.photos() result
             var png = new PNG(new Uint8Array(data));
-            png.render(document.getElementsByTagName('canvas')[0]);
+            png.render(document.getElementsByTagName("canvas")[0]);
         },
         function(error) {
             console.error("Error: " + error);
@@ -350,10 +352,10 @@ The `failure` callback function takes a string argument with error description.
             var width = parser.width;
             var height = parser.height;
             var decoded = parser.getData(width, height);
-            var canvas = document.getElementsByTagName('canvas')[0];
+            var canvas = document.getElementsByTagName("canvas")[0];
             canvas.width = width;
             canvas.height = height;
-            var ctx = canvas.getContext('2d');
+            var ctx = canvas.getContext("2d");
             var imageData = ctx.createImageData(width, height);
             var imageBytes = imageData.data;
             for (var i = 0, j = 0, ii = width * height * 4; i < ii;) {
@@ -373,8 +375,8 @@ The `failure` callback function takes a string argument with error description.
    as an image source (requires [cordova-plugin-file][5] to be installed):
 
     ```js
-    var photo = {id: "XXXXXX", contentType: "image/jpeg"}; // Get it from Photos.photos()
-    var img = document.getElementsByTagName('img')[0];     // Get it from your DOM
+    var photo = {"id": "XXXXXX", "contentType": "image/jpeg"}; // Get it from Photos.photos()
+    var img = document.getElementsByTagName("img")[0];     // Get it from your DOM
     requestFileSystem(LocalFileSystem.TEMPORARY, 3*1024*1024, function(fs) {
         fs.root.getFile(
             photo.id.replace(/\W/g, "_") + photo.contentType.replace(/^image\//, "."),
@@ -386,7 +388,7 @@ The `failure` callback function takes a string argument with error description.
                             entry.createWriter(function(writer) {
                                 writer.onwriteend = function() {img.src = entry.toURL()};
                                 writer.onerror = console.error;
-                                writer.write(new Blob([data], {type: photo.contentType}));
+                                writer.write(new Blob([data], {"type": photo.contentType}));
                             }, console.error);
                         }, console.error);
                     } else img.src = entry.toURL();

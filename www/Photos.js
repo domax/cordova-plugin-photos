@@ -57,6 +57,7 @@ var Photos = {
 					options = collectionIds;
 					collectionIds = null;
 				}
+				break;
 		}
 		exec(successCallback, errorCallback, "Photos", "photos", [collectionIds, options]);
 	},
