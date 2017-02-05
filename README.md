@@ -118,18 +118,25 @@ This function requests the list of photo assets that are available in specified 
 	
 2. An optional `options` argument that supports the following keys and according values:
 
-	| Key      | Type | Default | Action |
-	|:-------- |:----:|:-------:|:------ |
-	| `offset` | int  | `0`     | Amount of first N photos that should be skipped during fetch. Less than `0` means `0`. |
-	| `limit`  | int  | `0`     | Maximal number of photos that should be returned to client at once during fetch. `0` or less means no limit. |
+	| Key        | Type | Default | Action |
+	|:---------- |:----:|:-------:|:------ |
+	| `offset`   | int  | `0`     | Amount of first N photos that should be skipped during fetch. Less than `0` means `0`. |
+	| `limit`    | int  | `0`     | Maximal number of photos that should be returned to client at once during fetch. `0` or less means no limit. |
+	| `interval` | int  | `30`    | A time interval delay in millis between bundle fetches. Less than `0` means default. |
 
 __Please be warned__ that *`limit` option doesn't stop fetching process* - it just limits the amount
-of fetched photo records that are aggregated in plugin for client.
-So that if you use `limit` option then you may get several `success` callback calls,
-where each of them brings to you next aggregated bundle of fetched photos.
+of fetched photo records that are aggregated in plugin for client -
+so that if you use `limit` option then you may get several `success` callback calls,
+where each of them brings next aggregated bundle of fetched photos.
 
 If you want to stop fetching, you have to explicitly call [`cancel()`][cancel] function,
 that will break the running fetch process.
+
+An `interval` option makes sense only if `limit` is specified.
+It is useful for some kind of "background" photo fetches (e.g. driven by timer events)
+to minimize or even avoid UI freezes. 
+An `interval` value less than `30` may cause [`cancel()`][cancel] function to break fetching
+not instantly - so that you may receive one more excessive incomplete bundle.
 
 #### Callbacks
 

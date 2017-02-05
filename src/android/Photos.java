@@ -79,6 +79,7 @@ public class Photos extends CordovaPlugin {
 
 	private static final String P_LIST_OFFSET = "offset";
 	private static final String P_LIST_LIMIT = "limit";
+	private static final String P_LIST_INTERVAL = "interval";
 
 	private static final String T_DATA_URL = "data:image/jpeg;base64,";
 	private static final String T_DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ssZZZZZ";
@@ -240,6 +241,7 @@ public class Photos extends CordovaPlugin {
 
 		final int offset = options != null ? options.optInt(P_LIST_OFFSET, 0) : 0;
 		final int limit = options != null ? options.optInt(P_LIST_LIMIT, 0) : 0;
+		final int interval = options != null ? options.optInt(P_LIST_INTERVAL, 30) : 30;
 
 		try (final Cursor cursor = query(
 				cordova.getActivity().getContentResolver(),
@@ -274,7 +276,7 @@ public class Photos extends CordovaPlugin {
 							pr.setKeepCallback(true);
 							callbackContext.sendPluginResult(pr);
 							result = new JSONArray();
-							Thread.sleep(30);
+							Thread.sleep(interval < 0 ? 30 : interval);
 						}
 					}
 					++fetched;

@@ -54,6 +54,7 @@ NSString* const P_C_MODE_MOMENTS = @"MOMENTS";
 
 NSString* const P_LIST_OFFSET = @"offset";
 NSString* const P_LIST_LIMIT = @"limit";
+NSString* const P_LIST_INTERVAL = @"interval";
 
 NSString* const T_DATA_URL = @"data:image/jpeg;base64,%@";
 NSString* const T_DATE_FORMAT = @"YYYY-MM-dd\'T\'HH:mm:ssZZZZZ";
@@ -137,8 +138,16 @@ NSString* const E_PHOTO_BUSY = @"Fetching of photo assets is in progress";
         NSLog(@"photos: collectionIds=%@", collectionIds);
 
         NSDictionary* options = [weakSelf argOf:command atIndex:1 withDefault:@{}];
-        int offset = [[weakSelf valueFrom:options byKey:P_LIST_OFFSET withDefault:@"0"] intValue];
-        int limit = [[weakSelf valueFrom:options byKey:P_LIST_LIMIT withDefault:@"0"] intValue];
+        int offset = [[weakSelf valueFrom:options
+                                    byKey:P_LIST_OFFSET
+                              withDefault:@"0"] intValue];
+        int limit = [[weakSelf valueFrom:options
+                                   byKey:P_LIST_LIMIT
+                             withDefault:@"0"] intValue];
+        NSTimeInterval interval = [[weakSelf valueFrom:options
+                                                 byKey:P_LIST_INTERVAL
+                                           withDefault:@"30"] intValue];
+        interval = interval < 0 ? .03f : interval / 1000.0f;
 
         PHFetchResult<PHAssetCollection*>* fetchResultAssetCollections
         = collectionIds == nil || collectionIds.count == 0
@@ -209,7 +218,7 @@ NSString* const E_PHOTO_BUSY = @"Fetching of photo assets is in progress";
                                   if (limit > 0 && result.count >= limit) {
                                       [weakSelf partial:command withArray:result];
                                       [result removeAllObjects];
-                                      [NSThread sleepForTimeInterval:.03f];
+                                      [NSThread sleepForTimeInterval:interval];
                                   }
                               }
                               ++fetched;
