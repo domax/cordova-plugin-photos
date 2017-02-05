@@ -65,6 +65,7 @@ public class Photos extends CordovaPlugin {
 	private static final String P_LAT = "latitude";
 	private static final String P_LON = "longitude";
 	private static final String P_DATE = "date";
+	private static final String P_TS = "timestamp";
 	private static final String P_TYPE = "contentType";
 
 	private static final String P_SIZE = "dimension";
@@ -261,7 +262,10 @@ public class Photos extends CordovaPlugin {
 						item.put(P_NAME, cursor.getString(cursor.getColumnIndex(TITLE)));
 						item.put(P_TYPE, "image/jpeg");
 						long ts = cursor.getLong(cursor.getColumnIndex(DATE_TAKEN));
-						if (ts != 0) item.put(P_DATE, DF.format(new Date(ts)));
+						if (ts != 0) {
+							item.put(P_TS, ts);
+							item.put(P_DATE, DF.format(new Date(ts)));
+						}
 						item.put(P_WIDTH, cursor.getInt(cursor.getColumnIndex(WIDTH)));
 						item.put(P_HEIGHT, cursor.getInt(cursor.getColumnIndex(HEIGHT)));
 						double latitude = cursor.getDouble(cursor.getColumnIndex(LATITUDE));

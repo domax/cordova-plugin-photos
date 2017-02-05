@@ -147,6 +147,7 @@ array of objects with the following structure:
 |:------------- |:------:|:----------- |
 | `id`          | string | An unique photo identifier that you may use in [`thumbnail()`][thumbnail] or [`image()`][image] methods. |
 | `name`        | string | A file name of photo (without path and extension). |
+| `timestamp`   | long   | A photo's timestamp in millis from Jan 1, 1970 |
 | `date`        | string | A photo's timestamp in [ISO 8601][1] format in `YYYY-MM-dd'T'HH:mm:ssZZZ` pattern. |
 | `contentType` | string | Content type of image: e.g. `"image/png"` or `"image/jpeg"`. |
 | `width`       | int    | A width of image in pixels. |
