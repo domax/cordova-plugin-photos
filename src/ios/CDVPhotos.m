@@ -162,7 +162,8 @@ NSString* const E_PHOTO_BUSY = @"Fetching of photo assets is in progress";
         }
 
         int __block fetched = 0;
-        NSMutableArray<NSDictionary*>* result = [NSMutableArray array];
+        NSMutableArray<PHAsset*>* __block skippedAssets = [NSMutableArray array];
+        NSMutableArray<NSDictionary*>* __block result = [NSMutableArray array];
         [fetchResultAssetCollections enumerateObjectsUsingBlock:
          ^(PHAssetCollection* _Nonnull assetCollection, NSUInteger idx, BOOL* _Nonnull stop) {
              if ([weakSelf isNull:weakSelf.photosCommand]) {
@@ -185,19 +186,16 @@ NSString* const E_PHOTO_BUSY = @"Fetching of photo assets is in progress";
                       *stop = YES;
                       return;
                   }
-                  PHAssetResource* resource = [weakSelf resourceForAsset:asset];
-                  if (resource != nil) {
+                  NSString* filename = [weakSelf getFilenameForAsset:asset];
+                  if (![weakSelf isNull:filename]) {
                       NSTextCheckingResult* match
                       = [weakSelf.extRegex
-                         firstMatchInString:resource.originalFilename
+                         firstMatchInString:filename
                          options:0
-                         range:NSMakeRange(0, resource.originalFilename.length)];
+                         range:NSMakeRange(0, filename.length)];
                       if (match != nil) {
-                          NSString* name = [resource.originalFilename
-                                            substringWithRange:[match rangeAtIndex:1]];
-                          NSString* ext = [[resource.originalFilename
-                                            substringWithRange:[match rangeAtIndex:2]]
-                                           uppercaseString];
+                          NSString* name = [filename substringWithRange:[match rangeAtIndex:1]];
+                          NSString* ext = [[filename substringWithRange:[match rangeAtIndex:2]] uppercaseString];
                           NSString* type = weakSelf.extType[ext];
                           if (![weakSelf isNull:type]) {
                               if (offset <= fetched) {
@@ -224,11 +222,17 @@ NSString* const E_PHOTO_BUSY = @"Fetching of photo assets is in progress";
                                   }
                               }
                               ++fetched;
-                          }
-                      }
-                  }
+                          } else [skippedAssets addObject:asset];
+                      } else [skippedAssets addObject:asset];
+                  } else [skippedAssets addObject:asset];
               }];
          }];
+        [skippedAssets enumerateObjectsUsingBlock:^(PHAsset* _Nonnull asset, NSUInteger idx, BOOL* _Nonnull stop) {
+            NSLog(@"skipped asset %lu: id=%@; name=%@, type=%ld-%ld; size=%lux%lu;",
+                  idx, asset.localIdentifier, [weakSelf getFilenameForAsset:asset],
+                  (long)asset.mediaType, (long)asset.mediaSubtypes,
+                  (unsigned long)asset.pixelWidth, asset.pixelHeight);
+        }];
         weakSelf.photosCommand = nil;
         [weakSelf success:command withArray:result];
     }];
@@ -386,16 +390,22 @@ NSString* const E_PHOTO_BUSY = @"Fetching of photo assets is in progress";
     return asset;
 }
 
-- (PHAssetResource*) resourceForAsset:(PHAsset*)asset {
-    PHAssetResource* __block result = nil;
-    [[PHAssetResource assetResourcesForAsset:asset] enumerateObjectsUsingBlock:
-     ^(PHAssetResource* _Nonnull resource, NSUInteger idx, BOOL* _Nonnull stop) {
-         if (resource.type == PHAssetResourceTypePhoto) {
-             result = resource;
-             *stop = YES;
-         }
-     }];
-    return result;
+- (NSString*) getFilenameForAsset:(PHAsset*)asset {
+// Works fine, but asynchronous ((.
+//    [asset
+//     requestContentEditingInputWithOptions:nil
+//     completionHandler:^(PHContentEditingInput* _Nullable contentEditingInput, NSDictionary* _Nonnull info) {
+//         NSString* filename = [[contentEditingInput.fullSizeImageURL.absoluteString componentsSeparatedByString:@"/"] lastObject];
+//     }];
+
+// Most optimal and fast, but it's dirty hack
+    return [asset valueForKey:@"filename"];
+
+// assetResourcesForAsset doesn't work properly for all images.
+// Moreover, it obtains resource for very long time - too long for just a file name.
+//    NSArray<PHAssetResource*>* resources = [PHAssetResource assetResourcesForAsset:asset];
+//    if ([self isNull:resources] || resources.count == 0) return nil;
+//    return resources[0].originalFilename;
 }
 
 - (PHFetchResult<PHAssetCollection*>*) fetchCollections:(NSDictionary*)options {
