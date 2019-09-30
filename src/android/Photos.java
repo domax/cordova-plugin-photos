@@ -30,6 +30,7 @@ import android.graphics.Bitmap;
 import android.net.Uri;
 import android.util.Base64;
 import android.util.Log;
+import android.graphics.Matrix;
 
 import org.apache.cordova.*;
 import org.json.JSONArray;
@@ -64,6 +65,7 @@ public class Photos extends CordovaPlugin {
 	private static final String P_HEIGHT = "height";
 	private static final String P_LAT = "latitude";
 	private static final String P_LON = "longitude";
+	private static final String P_ORI = "orientation";
 	private static final String P_DATE = "date";
 	private static final String P_TS = "timestamp";
 	private static final String P_TYPE = "contentType";
@@ -93,8 +95,14 @@ public class Photos extends CordovaPlugin {
 	private static final String E_PHOTO_ID_WRONG = "Photo with specified ID wasn't found";
 	private static final String E_PHOTO_BUSY = "Fetching of photo assets is in progress";
 
+	private static final String D_WIDTH = "download_width";
+	private static final String D_HEIGHT = "download_height";
+
 	private static final int DEF_SIZE = 120;
 	private static final int DEF_QUALITY = 80;
+	private static final int DEF_ORI = 0;
+	private static final int DEF_WIDTH = 500;
+	private static final int DEF_HEIGHT = 500;
 
 	private static final SimpleDateFormat DF = new SimpleDateFormat(T_DATE_FORMAT, Locale.getDefault());
 
@@ -104,7 +112,7 @@ public class Photos extends CordovaPlugin {
 
 	@SuppressWarnings("MismatchedReadAndWriteOfArray")
 	private static final String[] PRJ_PHOTOS =
-			new String[]{_ID, TITLE, DATE_TAKEN, LATITUDE, LONGITUDE, WIDTH, HEIGHT};
+			new String[]{_ID, TITLE, DATE_TAKEN, LATITUDE, LONGITUDE, WIDTH, HEIGHT, ORIENTATION};
 
 	private String action;
 	private JSONArray data;
@@ -147,7 +155,7 @@ public class Photos extends CordovaPlugin {
 					cordova.getThreadPool().execute(new Runnable() {
 						@Override
 						public void run() {
-							image(data.optString(0, null), callbackContext);
+							image(data.optJSONObject(0), callbackContext);
 						}
 					});
 				break;
@@ -266,14 +274,25 @@ public class Photos extends CordovaPlugin {
 							item.put(P_TS, ts);
 							item.put(P_DATE, DF.format(new Date(ts)));
 						}
-						item.put(P_WIDTH, cursor.getInt(cursor.getColumnIndex(WIDTH)));
-						item.put(P_HEIGHT, cursor.getInt(cursor.getColumnIndex(HEIGHT)));
+						String orientation = cursor.getString(cursor.getColumnIndex(ORIENTATION));
+						item.put(P_ORI, orientation==null?"0":orientation);
+
+						if (orientation!= null && (orientation.equals("90") || orientation.equals("270"))){
+							item.put(P_WIDTH, cursor.getInt(cursor.getColumnIndex(HEIGHT)));
+							item.put(P_HEIGHT, cursor.getInt(cursor.getColumnIndex(WIDTH)));
+						}
+						else{
+							item.put(P_WIDTH, cursor.getInt(cursor.getColumnIndex(WIDTH)));
+							item.put(P_HEIGHT, cursor.getInt(cursor.getColumnIndex(HEIGHT)));
+						}
+						
 						double latitude = cursor.getDouble(cursor.getColumnIndex(LATITUDE));
 						double longitude = cursor.getDouble(cursor.getColumnIndex(LONGITUDE));
 						if (latitude != 0 || longitude != 0) {
 							item.put(P_LAT, latitude);
 							item.put(P_LON, longitude);
 						}
+
 						result.put(item);
 						if (limit > 0 && result.length() >= limit) {
 							PluginResult pr = new PluginResult(PluginResult.Status.OK, result);
@@ -299,6 +318,7 @@ public class Photos extends CordovaPlugin {
 		int size = options != null ? options.optInt(P_SIZE, DEF_SIZE) : DEF_SIZE;
 		int quality = options != null ? options.optInt(P_QUALITY, DEF_QUALITY) : DEF_QUALITY;
 		boolean asDataUrl = options != null && options.optBoolean(P_AS_DATAURL);
+		int orientation = options != null ? options.optInt(P_ORI, DEF_ORI) : DEF_ORI;
 		try {
 			if (photoId == null || photoId.isEmpty() || "null".equalsIgnoreCase(photoId))
 				throw new IllegalArgumentException(E_PHOTO_ID_UNDEF);
@@ -311,7 +331,14 @@ public class Photos extends CordovaPlugin {
 			int thumbH = (int) Math.round(thumb.getHeight() * ratio);
 
 			final ByteArrayOutputStream osThumb = new ByteArrayOutputStream();
-			Bitmap.createScaledBitmap(thumb, thumbW, thumbH, false).compress(Bitmap.CompressFormat.JPEG, quality, osThumb);
+
+			Matrix matrix = new Matrix();
+			matrix.postRotate(orientation);
+			Bitmap scaledBitmap = Bitmap.createScaledBitmap(thumb, thumbW, thumbH, true);
+			Bitmap rotatedBitmap = Bitmap.createBitmap(scaledBitmap, 0, 0, scaledBitmap.getWidth(), scaledBitmap.getHeight(), matrix, true);
+
+			rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, quality, osThumb);
+
 			if (!asDataUrl) callbackContext.success(osThumb.toByteArray());
 			else callbackContext.success(T_DATA_URL + Base64.encodeToString(osThumb.toByteArray(), Base64.NO_WRAP));
 		} catch (Exception e) {
@@ -320,7 +347,13 @@ public class Photos extends CordovaPlugin {
 		}
 	}
 
-	private void image(final String photoId, final CallbackContext callbackContext) {
+	private void image(final JSONObject photo, final CallbackContext callbackContext) {
+
+		String photoId = photo != null ? photo.optString(P_ID, null) : null;
+		int orientation = photo != null ? photo.optInt(P_ORI, DEF_ORI) : DEF_ORI;
+		int width = photo != null ? photo.optInt(D_WIDTH, DEF_WIDTH) : DEF_WIDTH;
+		int height = photo != null ? photo.optInt(D_HEIGHT, DEF_HEIGHT) : DEF_HEIGHT;
+
 		try {
 			if (photoId == null || photoId.isEmpty() || "null".equalsIgnoreCase(photoId))
 				throw new IllegalArgumentException(E_PHOTO_ID_UNDEF);
@@ -329,7 +362,14 @@ public class Photos extends CordovaPlugin {
 					Uri.withAppendedPath(EXTERNAL_CONTENT_URI, photoId));
 			if (image == null) throw new IllegalStateException(E_PHOTO_ID_WRONG);
 			final ByteArrayOutputStream osImage = new ByteArrayOutputStream();
-			image.compress(Bitmap.CompressFormat.JPEG, DEF_QUALITY, osImage);
+
+			Matrix matrix = new Matrix();
+			matrix.postRotate(orientation);
+			width = Math.min(width, image.getWidth());
+			height = Math.min(height, image.getHeight());
+			Bitmap rotatedBitmap = Bitmap.createBitmap(image, 0, 0, image.getWidth(), image.getHeight(), matrix, true);
+			rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, DEF_QUALITY, osImage);
+
 			callbackContext.success(osImage.toByteArray());
 		} catch (Exception e) {
 			Log.e(TAG, e.getMessage(), e);
