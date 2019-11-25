@@ -256,12 +256,10 @@ The `failure` callback function takes a string argument with error description.
         });
     ```
 
-2. Generate and render a thumbnail as [Data URL][2] with maximal dimension by width or height of 300 pixels:
+2. Generate and render a thumbnail as [Data URL][2] with maximal dimension by width or height of 300 pixels
+   and JPEG quality of 70:
 
     ```js
-    // Generate a thumbnail of photo with ID "XXXXXX" as data URL
-    // with maximal dimension by width or height of 300 pixels
-    // and JPEG quality of 70:
     Photos.thumbnail("XXXXXX",
         {"asDataUrl": true, "dimension": 300, "quality": 70},
         function(data) {
