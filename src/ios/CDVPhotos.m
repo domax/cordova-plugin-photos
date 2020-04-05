@@ -74,6 +74,8 @@ NSString* const E_PHOTO_ID_WRONG = @"Photo with specified ID wasn't found";
 NSString* const E_PHOTO_NOT_IMAGE = @"Data with specified ID isn't an image";
 NSString* const E_PHOTO_BUSY = @"Fetching of photo assets is in progress";
 
+NSString* const S_SORT_TYPE = @"creationDate";
+
 - (void) pluginInitialize {
     _dateFormat = [[NSDateFormatter alloc] init];
     [_dateFormat setDateFormat:T_DATE_FORMAT];
@@ -83,7 +85,8 @@ NSString* const E_PHOTO_BUSY = @"Fetching of photo assets is in progress";
                  @"PNG": @"image/png",
                  @"GIF": @"image/gif",
                  @"TIF": @"image/tiff",
-                 @"TIFF": @"image/tiff"};
+                 @"TIFF": @"image/tiff",
+                 @"HEIC": @"image/png"};
 
     _extRegex = [NSRegularExpression
                  regularExpressionWithPattern:T_EXT_PATTERN
@@ -137,102 +140,25 @@ NSString* const E_PHOTO_BUSY = @"Fetching of photo assets is in progress";
     [self checkPermissionsOf:command andRun:^{
         NSArray* collectionIds = [weakSelf argOf:command atIndex:0 withDefault:nil];
         NSLog(@"photos: collectionIds=%@", collectionIds);
+        
+        NSMutableArray<NSDictionary*>* result = nil;
+        
 
-        NSDictionary* options = [weakSelf argOf:command atIndex:1 withDefault:@{}];
-        int offset = [[weakSelf valueFrom:options
-                                    byKey:P_LIST_OFFSET
-                              withDefault:@"0"] intValue];
-        int limit = [[weakSelf valueFrom:options
-                                   byKey:P_LIST_LIMIT
-                             withDefault:@"0"] intValue];
-        NSTimeInterval interval = [[weakSelf valueFrom:options
-                                                 byKey:P_LIST_INTERVAL
-                                           withDefault:@"30"] intValue];
-        interval = interval < 0 ? .03f : interval / 1000.0f;
-
-        PHFetchResult<PHAssetCollection*>* fetchResultAssetCollections
-        = collectionIds == nil || collectionIds.count == 0
-        ? [weakSelf fetchCollections:@{}]
-        : [PHAssetCollection fetchAssetCollectionsWithLocalIdentifiers:collectionIds
-                                                               options:nil];
-        if (fetchResultAssetCollections == nil) {
-            weakSelf.photosCommand = nil;
-            [weakSelf failure:command withMessage:E_COLLECTION_MODE];
-            return;
+        if (collectionIds == nil || collectionIds.count == 0) {
+            result = [weakSelf fetchAllAssets];
+        } else {
+            PHFetchResult<PHAssetCollection*>* fetchResultAssetCollections = [PHAssetCollection fetchAssetCollectionsWithLocalIdentifiers:collectionIds
+            options:nil];
+            
+            if (fetchResultAssetCollections == nil) {
+                weakSelf.photosCommand = nil;
+                [weakSelf failure:command withMessage:E_COLLECTION_MODE];
+                return;
+            }
+            
+            result = [weakSelf fetchAssetsFromCollections:fetchResultAssetCollections];
         }
-
-        int __block fetched = 0;
-        NSMutableArray<PHAsset*>* __block skippedAssets = [NSMutableArray array];
-        NSMutableArray<NSDictionary*>* __block result = [NSMutableArray array];
-        [fetchResultAssetCollections enumerateObjectsUsingBlock:
-         ^(PHAssetCollection* _Nonnull assetCollection, NSUInteger idx, BOOL* _Nonnull stop) {
-             if ([weakSelf isNull:weakSelf.photosCommand]) {
-                 *stop = YES;
-                 return;
-             }
-             PHFetchOptions* fetchOptions = [[PHFetchOptions alloc] init];
-             fetchOptions.sortDescriptors = @[[NSSortDescriptor
-                                               sortDescriptorWithKey:@"creationDate"
-                                               ascending:NO]];
-             fetchOptions.predicate
-             = [NSPredicate predicateWithFormat:@"mediaType = %d", PHAssetMediaTypeImage];
-
-             PHFetchResult<PHAsset*>* fetchResultAssets =
-             [PHAsset fetchAssetsInAssetCollection:assetCollection options:fetchOptions];
-
-             [fetchResultAssets enumerateObjectsUsingBlock:
-              ^(PHAsset* _Nonnull asset, NSUInteger idx, BOOL* _Nonnull stop) {
-                  if ([weakSelf isNull:weakSelf.photosCommand]) {
-                      *stop = YES;
-                      return;
-                  }
-                  NSString* filename = [weakSelf getFilenameForAsset:asset];
-                  if (![weakSelf isNull:filename]) {
-                      NSTextCheckingResult* match
-                      = [weakSelf.extRegex
-                         firstMatchInString:filename
-                         options:0
-                         range:NSMakeRange(0, filename.length)];
-                      if (match != nil) {
-                          NSString* name = [filename substringWithRange:[match rangeAtIndex:1]];
-                          NSString* ext = [[filename substringWithRange:[match rangeAtIndex:2]] uppercaseString];
-                          NSString* type = weakSelf.extType[ext];
-                          if (![weakSelf isNull:type]) {
-                              if (offset <= fetched) {
-                                  NSMutableDictionary<NSString*, NSObject*>* assetItem
-                                  = [NSMutableDictionary dictionaryWithObjectsAndKeys:
-                                     asset.localIdentifier, P_ID,
-                                     name, P_NAME,
-                                     type, P_TYPE,
-                                     [weakSelf.dateFormat stringFromDate:asset.creationDate], P_DATE,
-                                     @((long) (asset.creationDate.timeIntervalSince1970 * 1000)), P_TS,
-                                     @(asset.pixelWidth), P_WIDTH,
-                                     @(asset.pixelHeight), P_HEIGHT,
-                                     nil];
-                                  if (![weakSelf isNull:asset.location]) {
-                                      CLLocationCoordinate2D coord = asset.location.coordinate;
-                                      [assetItem setValue:@(coord.latitude) forKey:P_LAT];
-                                      [assetItem setValue:@(coord.longitude) forKey:P_LON];
-                                  }
-                                  [result addObject:assetItem];
-                                  if (limit > 0 && result.count >= limit) {
-                                      [weakSelf partial:command withArray:result];
-                                      [result removeAllObjects];
-                                      [NSThread sleepForTimeInterval:interval];
-                                  }
-                              }
-                              ++fetched;
-                          } else [skippedAssets addObject:asset];
-                      } else [skippedAssets addObject:asset];
-                  } else [skippedAssets addObject:asset];
-              }];
-         }];
-        [skippedAssets enumerateObjectsUsingBlock:^(PHAsset* _Nonnull asset, NSUInteger idx, BOOL* _Nonnull stop) {
-            NSLog(@"skipped asset %lu: id=%@; name=%@, type=%ld-%ld; size=%lux%lu;",
-                  idx, asset.localIdentifier, [weakSelf getFilenameForAsset:asset],
-                  (long)asset.mediaType, (long)asset.mediaSubtypes,
-                  (unsigned long)asset.pixelWidth, asset.pixelHeight);
-        }];
+        
         weakSelf.photosCommand = nil;
         [weakSelf success:command withArray:result];
     }];
@@ -256,6 +182,7 @@ NSString* const E_PHOTO_BUSY = @"Fetching of photo assets is in progress";
         reqOptions.resizeMode = PHImageRequestOptionsResizeModeExact;
         reqOptions.networkAccessAllowed = YES;
         reqOptions.synchronous = YES;
+        reqOptions.deliveryMode = PHImageRequestOptionsDeliveryModeHighQualityFormat;
 
         [[PHImageManager defaultManager]
          requestImageForAsset:asset
@@ -372,12 +299,20 @@ NSString* const E_PHOTO_BUSY = @"Fetching of photo assets is in progress";
 - (PHAsset*) assetByCommand:(CDVInvokedUrlCommand*)command {
     NSString* assetId = [self argOf:command atIndex:0 withDefault:nil];
 
+    PHFetchOptions* fetchOptions = [[PHFetchOptions alloc] init];
+    NSMutableArray<NSSortDescriptor*> * descriptors = [NSMutableArray array];
+    NSSortDescriptor* descriptor = [[NSSortDescriptor alloc] initWithKey:S_SORT_TYPE ascending:false];
+    [descriptors addObject:descriptor];
+    fetchOptions.sortDescriptors = descriptors;
+    fetchOptions.includeAllBurstAssets = YES;
+    fetchOptions.includeHiddenAssets = YES;
+    
     if ([self isNull:assetId]) {
         [self failure:command withMessage:E_PHOTO_ID_UNDEF];
         return nil;
     }
     PHFetchResult<PHAsset*>* fetchResultAssets
-    = [PHAsset fetchAssetsWithLocalIdentifiers:@[assetId] options:nil];
+    = [PHAsset fetchAssetsWithLocalIdentifiers:@[assetId] options:fetchOptions];
     if (fetchResultAssets.count == 0) {
         [self failure:command withMessage:E_PHOTO_ID_WRONG];
         return nil;
@@ -433,6 +368,182 @@ NSString* const E_PHOTO_BUSY = @"Fetching of photo assets is in progress";
     return [PHAssetCollection fetchAssetCollectionsWithType:type
                                                     subtype:subtype
                                                     options:nil];
+}
+
+- (NSMutableArray<NSDictionary*>*) fetchAllAssets {
+
+    CDVPhotos* __weak weakSelf = self;
+    
+    NSDictionary* options = [weakSelf argOf:self.photosCommand atIndex:1 withDefault:@{}];
+    int offset = [[weakSelf valueFrom:options
+                                byKey:P_LIST_OFFSET
+                          withDefault:@"0"] intValue];
+    int limit = [[weakSelf valueFrom:options
+                               byKey:P_LIST_LIMIT
+                         withDefault:@"0"] intValue];
+    
+    //PHImageRequestOptions* reqOptions = [[PHImageRequestOptions alloc] init];
+    
+    PHFetchOptions* fetchOptions = [[PHFetchOptions alloc] init];
+    NSMutableArray<NSSortDescriptor*> * descriptors = [NSMutableArray array];
+    NSSortDescriptor* descriptor = [[NSSortDescriptor alloc] initWithKey:S_SORT_TYPE ascending:false];
+    [descriptors addObject:descriptor];
+    fetchOptions.sortDescriptors = descriptors;
+    fetchOptions.includeAllBurstAssets = YES;
+    fetchOptions.includeHiddenAssets = YES;
+    
+    PHFetchResult<PHAsset *> * fetchResultAssets = [PHAsset fetchAssetsWithMediaType:PHAssetMediaTypeImage options:fetchOptions];
+    
+    int __block fetched = 0;
+    NSMutableArray<PHAsset*>* __block skippedAssets = [NSMutableArray array];
+    NSMutableArray<NSDictionary*>* __block result = [NSMutableArray array];
+    [fetchResultAssets enumerateObjectsUsingBlock:
+    ^(PHAsset* _Nonnull asset, NSUInteger idx, BOOL* _Nonnull stop) {
+        if ([weakSelf isNull:weakSelf.photosCommand]) {
+            *stop = YES;
+            return;
+        }
+        NSString* filename = [weakSelf getFilenameForAsset:asset];
+        if (![weakSelf isNull:filename]) {
+            NSTextCheckingResult* match
+            = [weakSelf.extRegex
+               firstMatchInString:filename
+               options:0
+               range:NSMakeRange(0, filename.length)];
+            if (match != nil) {
+                NSString* name = [filename substringWithRange:[match rangeAtIndex:1]];
+                NSString* ext = [[filename substringWithRange:[match rangeAtIndex:2]] uppercaseString];
+                NSString* type = weakSelf.extType[ext];
+                if (![weakSelf isNull:type]) {
+                    if (offset <= fetched) {
+                        NSMutableDictionary<NSString*, NSObject*>* assetItem
+                        = [NSMutableDictionary dictionaryWithObjectsAndKeys:
+                           asset.localIdentifier, P_ID,
+                           name, P_NAME,
+                           type, P_TYPE,
+                           [weakSelf.dateFormat stringFromDate:asset.creationDate], P_DATE,
+                           @((long) (asset.creationDate.timeIntervalSince1970 * 1000)), P_TS,
+                           @(asset.pixelWidth), P_WIDTH,
+                           @(asset.pixelHeight), P_HEIGHT,
+                           nil];
+                        if (![weakSelf isNull:asset.location]) {
+                            CLLocationCoordinate2D coord = asset.location.coordinate;
+                            [assetItem setValue:@(coord.latitude) forKey:P_LAT];
+                            [assetItem setValue:@(coord.longitude) forKey:P_LON];
+                        }
+                        [result addObject:assetItem];
+                        if (limit > 0 && result.count >= limit) {
+                            [weakSelf partial:self.photosCommand withArray:result];
+                            [result removeAllObjects];
+                        }
+                    }
+                    ++fetched;
+                } else {
+                   [skippedAssets addObject:asset];
+               }
+            } else {
+                [skippedAssets addObject:asset];
+            }
+        } else {
+           [skippedAssets addObject:asset];
+        }
+    }];
+    
+    [skippedAssets enumerateObjectsUsingBlock:^(PHAsset* _Nonnull asset, NSUInteger idx, BOOL* _Nonnull stop) {
+        NSLog(@"skipped asset %lu: id=%@; name=%@, type=%ld-%ld; size=%lux%lu;",
+              idx, asset.localIdentifier, [weakSelf getFilenameForAsset:asset],
+              (long)asset.mediaType, (long)asset.mediaSubtypes,
+              (unsigned long)asset.pixelWidth, asset.pixelHeight);
+    }];
+    
+    return result;
+}
+
+- (NSMutableArray<NSDictionary*>*) fetchAssetsFromCollections:(PHFetchResult<PHAssetCollection*>*)fetchResultAssetCollections {
+    CDVPhotos* __weak weakSelf = self;
+    
+    NSDictionary* options = [weakSelf argOf:self.photosCommand atIndex:1 withDefault:@{}];
+    int offset = [[weakSelf valueFrom:options
+                                byKey:P_LIST_OFFSET
+                          withDefault:@"0"] intValue];
+    int limit = [[weakSelf valueFrom:options
+                               byKey:P_LIST_LIMIT
+                         withDefault:@"0"] intValue];
+    int __block fetched = 0;
+    NSMutableArray<PHAsset*>* __block skippedAssets = [NSMutableArray array];
+    NSMutableArray<NSDictionary*>* __block result = [NSMutableArray array];
+    [fetchResultAssetCollections enumerateObjectsUsingBlock:
+     ^(PHAssetCollection* _Nonnull assetCollection, NSUInteger idx, BOOL* _Nonnull stop) {
+         if ([weakSelf isNull:weakSelf.photosCommand]) {
+             *stop = YES;
+             return;
+         }
+         PHFetchOptions* fetchOptions = [[PHFetchOptions alloc] init];
+         fetchOptions.sortDescriptors = @[[NSSortDescriptor
+                                           sortDescriptorWithKey:@"creationDate"
+                                           ascending:NO]];
+         fetchOptions.predicate
+         = [NSPredicate predicateWithFormat:@"mediaType = %d", PHAssetMediaTypeImage];
+
+         PHFetchResult<PHAsset*>* fetchResultAssets =
+         [PHAsset fetchAssetsInAssetCollection:assetCollection options:fetchOptions];
+
+        
+         [fetchResultAssets enumerateObjectsUsingBlock:
+          ^(PHAsset* _Nonnull asset, NSUInteger idx, BOOL* _Nonnull stop) {
+              if ([weakSelf isNull:weakSelf.photosCommand]) {
+                  *stop = YES;
+                  return;
+              }
+              NSString* filename = [weakSelf getFilenameForAsset:asset];
+              if (![weakSelf isNull:filename]) {
+                  NSTextCheckingResult* match
+                  = [weakSelf.extRegex
+                     firstMatchInString:filename
+                     options:0
+                     range:NSMakeRange(0, filename.length)];
+                  if (match != nil) {
+                      NSString* name = [filename substringWithRange:[match rangeAtIndex:1]];
+                      NSString* ext = [[filename substringWithRange:[match rangeAtIndex:2]] uppercaseString];
+                      NSString* type = weakSelf.extType[ext];
+                      if (![weakSelf isNull:type]) {
+                          if (offset <= fetched) {
+                              NSMutableDictionary<NSString*, NSObject*>* assetItem
+                              = [NSMutableDictionary dictionaryWithObjectsAndKeys:
+                                 asset.localIdentifier, P_ID,
+                                 name, P_NAME,
+                                 type, P_TYPE,
+                                 [weakSelf.dateFormat stringFromDate:asset.creationDate], P_DATE,
+                                 @((long) (asset.creationDate.timeIntervalSince1970 * 1000)), P_TS,
+                                 @(asset.pixelWidth), P_WIDTH,
+                                 @(asset.pixelHeight), P_HEIGHT,
+                                 nil];
+                              if (![weakSelf isNull:asset.location]) {
+                                  CLLocationCoordinate2D coord = asset.location.coordinate;
+                                  [assetItem setValue:@(coord.latitude) forKey:P_LAT];
+                                  [assetItem setValue:@(coord.longitude) forKey:P_LON];
+                              }
+                              [result addObject:assetItem];
+                              if (limit > 0 && result.count >= limit) {
+                                  [weakSelf partial:self.photosCommand withArray:result];
+                                  [result removeAllObjects];
+                              }
+                          }
+                          ++fetched;
+                      } else [skippedAssets addObject:asset];
+                  } else [skippedAssets addObject:asset];
+              } else [skippedAssets addObject:asset];
+          }];
+     }];
+    
+    [skippedAssets enumerateObjectsUsingBlock:^(PHAsset* _Nonnull asset, NSUInteger idx, BOOL* _Nonnull stop) {
+        NSLog(@"skipped asset %lu: id=%@; name=%@, type=%ld-%ld; size=%lux%lu;",
+              idx, asset.localIdentifier, [weakSelf getFilenameForAsset:asset],
+              (long)asset.mediaType, (long)asset.mediaSubtypes,
+              (unsigned long)asset.pixelWidth, asset.pixelHeight);
+    }];
+    
+    return result;
 }
 
 #pragma mark - Callback methods
