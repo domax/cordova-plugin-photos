@@ -120,7 +120,7 @@ NSString* const S_SORT_TYPE = @"creationDate";
              = [NSMutableDictionary dictionaryWithObjectsAndKeys:
                 assetCollection.localIdentifier, P_ID,
                 assetCollection.localizedTitle, P_NAME,
-                assetCollection.estimatedAssetCount, P_COUNT,
+                assetCollection.estimatedAssetCount == NSNotFound ? I_ZERO : [NSString stringWithFormat:@"%lu",assetCollection.estimatedAssetCount], P_COUNT,
                 nil];
              if ([weakSelf isNull:assetCollection.localizedTitle]) {
                  collectionItem[P_NAME] = DEF_NAME;
