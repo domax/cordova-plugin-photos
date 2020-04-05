@@ -69,6 +69,7 @@ public class Photos extends CordovaPlugin {
 	private static final String P_DATE = "date";
 	private static final String P_TS = "timestamp";
 	private static final String P_TYPE = "contentType";
+    private static final String P_COUNT = "count";
 
 	private static final String P_SIZE = "dimension";
 	private static final String P_QUALITY = "quality";
@@ -108,7 +109,7 @@ public class Photos extends CordovaPlugin {
 
 	@SuppressWarnings("MismatchedReadAndWriteOfArray")
 	private static final String[] PRJ_COLLECTIONS =
-			new String[]{"DISTINCT " + BUCKET_ID, BUCKET_DISPLAY_NAME};
+			new String[]{"DISTINCT " + BUCKET_ID, BUCKET_DISPLAY_NAME, SIZE};
 
 	@SuppressWarnings("MismatchedReadAndWriteOfArray")
 	private static final String[] PRJ_PHOTOS =
@@ -221,7 +222,20 @@ public class Photos extends CordovaPlugin {
 					final JSONObject item = new JSONObject();
 					item.put(P_ID, cursor.getString(cursor.getColumnIndex(BUCKET_ID)));
 					item.put(P_NAME, cursor.getString(cursor.getColumnIndex(BUCKET_DISPLAY_NAME)));
-					result.put(item);
+                    item.put(P_COUNT, "1");
+
+                    JSONObject element = null;
+                    for (int i = 0; i < result.length(); i++) {
+                        if (result.getJSONObject(i).getString(P_ID).equalsIgnoreCase(item.getString(P_ID))){
+                            element = result.getJSONObject(i);
+                            break;
+                        }
+                    }
+                    if (element == null) {
+					    result.put(item);
+                    } else {
+                        element.put(P_COUNT, Integer.parseInt(element.getString(P_COUNT)) + 1);
+                    }
 				} while (cursor.moveToNext());
 			}
 			callbackContext.success(result);
@@ -244,8 +258,8 @@ public class Photos extends CordovaPlugin {
 			selection = BUCKET_ID + " IN (" + repeatText(collectionIds.length(), "?", ",") + ")";
 			selectionArgs = this.<String>jsonArrayToList(collectionIds).toArray(new String[collectionIds.length()]);
 		} else {
-			selection = BUCKET_DISPLAY_NAME + "=?";
-			selectionArgs = new String[]{BN_CAMERA};
+			selection = null;//BUCKET_DISPLAY_NAME + "=?";
+			selectionArgs = null;//new String[]{BN_CAMERA};
 		}
 
 		final int offset = options != null ? options.optInt(P_LIST_OFFSET, 0) : 0;

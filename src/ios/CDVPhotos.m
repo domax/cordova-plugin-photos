@@ -42,6 +42,7 @@ NSString* const P_LON = @"longitude";
 NSString* const P_DATE = @"date";
 NSString* const P_TS = @"timestamp";
 NSString* const P_TYPE = @"contentType";
+NSString* const P_COUNT = @"count";
 
 NSString* const P_SIZE = @"dimension";
 NSString* const P_QUALITY = @"quality";
@@ -119,6 +120,7 @@ NSString* const S_SORT_TYPE = @"creationDate";
              = [NSMutableDictionary dictionaryWithObjectsAndKeys:
                 assetCollection.localIdentifier, P_ID,
                 assetCollection.localizedTitle, P_NAME,
+                assetCollection.estimatedAssetCount, P_COUNT,
                 nil];
              if ([weakSelf isNull:assetCollection.localizedTitle]) {
                  collectionItem[P_NAME] = DEF_NAME;
