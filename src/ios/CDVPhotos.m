@@ -103,7 +103,7 @@ NSString* const S_SORT_TYPE = @"creationDate";
     CDVPhotos* __weak weakSelf = self;
     [self checkPermissionsOf:command andRun:^{
         NSDictionary* options = [weakSelf argOf:command atIndex:0 withDefault:@{}];
-
+        
         PHFetchResult<PHAssetCollection*>* fetchResultAssetCollections
         = [weakSelf fetchCollections:options];
         if (fetchResultAssetCollections == nil) {
@@ -116,15 +116,17 @@ NSString* const S_SORT_TYPE = @"creationDate";
 
         [fetchResultAssetCollections enumerateObjectsUsingBlock:
          ^(PHAssetCollection* _Nonnull assetCollection, NSUInteger idx, BOOL* _Nonnull stop) {
+            NSString* count = [@(assetCollection.estimatedAssetCount) stringValue];
+            NSString* title = assetCollection.localizedTitle;
+            if ([weakSelf isNull:assetCollection.localizedTitle]) {
+                title = DEF_NAME;
+            }
              NSMutableDictionary<NSString*, NSObject*>* collectionItem
              = [NSMutableDictionary dictionaryWithObjectsAndKeys:
                 assetCollection.localIdentifier, P_ID,
-                assetCollection.localizedTitle, P_NAME,
-                assetCollection.estimatedAssetCount == NSNotFound ? I_ZERO : [NSString stringWithFormat:@"%lu",assetCollection.estimatedAssetCount], P_COUNT,
+                title, P_NAME,
+                count, P_COUNT,
                 nil];
-             if ([weakSelf isNull:assetCollection.localizedTitle]) {
-                 collectionItem[P_NAME] = DEF_NAME;
-             }
 
              [result addObject:collectionItem];
          }];
@@ -367,9 +369,12 @@ NSString* const S_SORT_TYPE = @"creationDate";
     } else {
         return nil;
     }
+    PHFetchOptions* fetchOptions = [[PHFetchOptions alloc] init];
+    fetchOptions.includeHiddenAssets = FALSE;
+    
     return [PHAssetCollection fetchAssetCollectionsWithType:type
                                                     subtype:subtype
-                                                    options:nil];
+                                                    options:fetchOptions];
 }
 
 - (NSMutableArray<NSDictionary*>*) fetchAllAssets {
