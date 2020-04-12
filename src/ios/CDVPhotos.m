@@ -104,32 +104,58 @@ NSString* const S_SORT_TYPE = @"creationDate";
     [self checkPermissionsOf:command andRun:^{
         NSDictionary* options = [weakSelf argOf:command atIndex:0 withDefault:@{}];
         
-        PHFetchResult<PHAssetCollection*>* fetchResultAssetCollections
+        PHFetchResult<PHCollection*>* fetchResultCollections
         = [weakSelf fetchCollections:options];
-        if (fetchResultAssetCollections == nil) {
+        if (fetchResultCollections == nil) {
             [weakSelf failure:command withMessage:E_COLLECTION_MODE];
             return;
         }
-
-        NSMutableArray<NSDictionary*>* result
-        = [NSMutableArray arrayWithCapacity:fetchResultAssetCollections.count];
-
-        [fetchResultAssetCollections enumerateObjectsUsingBlock:
-         ^(PHAssetCollection* _Nonnull assetCollection, NSUInteger idx, BOOL* _Nonnull stop) {
-            NSString* count = [@(assetCollection.estimatedAssetCount) stringValue];
-            NSString* title = assetCollection.localizedTitle;
-            if ([weakSelf isNull:assetCollection.localizedTitle]) {
-                title = DEF_NAME;
+        NSMutableArray<PHCollection*>* array
+        = [NSMutableArray arrayWithCapacity:fetchResultCollections.count];
+        
+        [fetchResultCollections enumerateObjectsUsingBlock:
+        ^(PHCollection* _Nonnull collection, NSUInteger idx, BOOL* _Nonnull stop) {
+            if ([collection isKindOfClass:PHCollectionList.class]) {
+                //Skip directories
+                [array addObject:(PHAssetCollection*)collection];
+            } else {
+                [array addObject:(PHAssetCollection*)collection];
             }
-             NSMutableDictionary<NSString*, NSObject*>* collectionItem
-             = [NSMutableDictionary dictionaryWithObjectsAndKeys:
-                assetCollection.localIdentifier, P_ID,
-                title, P_NAME,
-                count, P_COUNT,
-                nil];
+        }];
+        
+        int assetCollectionCount = 0;
+        
+        for (PHCollection* collection in array) {
+            if ([collection isKindOfClass:PHCollectionList.class]) {
+                //Skip directories
+            } else {
+                assetCollectionCount++;
+            }
+        }
+        
+        NSMutableArray<NSDictionary*>* result
+        = [NSMutableArray arrayWithCapacity:assetCollectionCount];
+        
+        for (PHCollection* collection in array) {
+            if ([collection isKindOfClass:PHCollectionList.class]) {
+                //Skip directories
+            } else {
+                PHAssetCollection* assetCollection = (PHAssetCollection*)collection;
+                NSString* count = [@(assetCollection.estimatedAssetCount) stringValue];
+                NSString* title = assetCollection.localizedTitle;
+                if ([weakSelf isNull:assetCollection.localizedTitle]) {
+                    title = DEF_NAME;
+                }
+                 NSMutableDictionary<NSString*, NSObject*>* collectionItem
+                 = [NSMutableDictionary dictionaryWithObjectsAndKeys:
+                    assetCollection.localIdentifier, P_ID,
+                    title, P_NAME,
+                    count, P_COUNT,
+                    nil];
 
-             [result addObject:collectionItem];
-         }];
+                 [result addObject:collectionItem];
+            }
+        }
         [weakSelf success:command withArray:result];
     }];
 }
@@ -347,7 +373,7 @@ NSString* const S_SORT_TYPE = @"creationDate";
 //    return resources[0].originalFilename;
 }
 
-- (PHFetchResult<PHAssetCollection*>*) fetchCollections:(NSDictionary*)options {
+- (PHFetchResult<PHCollection*>*) fetchCollections:(NSDictionary*)options {
     NSString* mode = [self valueFrom:options
                                byKey:P_C_MODE
                          withDefault:P_C_MODE_ROLL];
@@ -361,20 +387,17 @@ NSString* const S_SORT_TYPE = @"creationDate";
         type = PHAssetCollectionTypeSmartAlbum;
         subtype = PHAssetCollectionSubtypeAny;
     } else if ([P_C_MODE_ALBUMS isEqualToString:mode]) {
-        type = PHAssetCollectionTypeAlbum;
-        subtype = PHAssetCollectionSubtypeAny;
+        return [PHCollectionList fetchTopLevelUserCollectionsWithOptions:nil];
     } else if ([P_C_MODE_MOMENTS isEqualToString:mode]) {
         type = PHAssetCollectionTypeMoment;
         subtype = PHAssetCollectionSubtypeAny;
     } else {
         return nil;
     }
-    PHFetchOptions* fetchOptions = [[PHFetchOptions alloc] init];
-    fetchOptions.includeHiddenAssets = FALSE;
     
     return [PHAssetCollection fetchAssetCollectionsWithType:type
                                                     subtype:subtype
-                                                    options:fetchOptions];
+                                                    options:nil];
 }
 
 - (NSMutableArray<NSDictionary*>*) fetchAllAssets {
@@ -480,67 +503,74 @@ NSString* const S_SORT_TYPE = @"creationDate";
     NSMutableArray<PHAsset*>* __block skippedAssets = [NSMutableArray array];
     NSMutableArray<NSDictionary*>* __block result = [NSMutableArray array];
     [fetchResultAssetCollections enumerateObjectsUsingBlock:
-     ^(PHAssetCollection* _Nonnull assetCollection, NSUInteger idx, BOOL* _Nonnull stop) {
+     ^(PHCollection* _Nonnull collection, NSUInteger idx, BOOL* _Nonnull stop) {
          if ([weakSelf isNull:weakSelf.photosCommand]) {
              *stop = YES;
              return;
          }
-         PHFetchOptions* fetchOptions = [[PHFetchOptions alloc] init];
-         fetchOptions.sortDescriptors = @[[NSSortDescriptor
-                                           sortDescriptorWithKey:@"creationDate"
-                                           ascending:NO]];
-         fetchOptions.predicate
-         = [NSPredicate predicateWithFormat:@"mediaType = %d", PHAssetMediaTypeImage];
-
-         PHFetchResult<PHAsset*>* fetchResultAssets =
-         [PHAsset fetchAssetsInAssetCollection:assetCollection options:fetchOptions];
-
         
-         [fetchResultAssets enumerateObjectsUsingBlock:
-          ^(PHAsset* _Nonnull asset, NSUInteger idx, BOOL* _Nonnull stop) {
-              if ([weakSelf isNull:weakSelf.photosCommand]) {
-                  *stop = YES;
-                  return;
-              }
-              NSString* filename = [weakSelf getFilenameForAsset:asset];
-              if (![weakSelf isNull:filename]) {
-                  NSTextCheckingResult* match
-                  = [weakSelf.extRegex
-                     firstMatchInString:filename
-                     options:0
-                     range:NSMakeRange(0, filename.length)];
-                  if (match != nil) {
-                      NSString* name = [filename substringWithRange:[match rangeAtIndex:1]];
-                      NSString* ext = [[filename substringWithRange:[match rangeAtIndex:2]] uppercaseString];
-                      NSString* type = weakSelf.extType[ext];
-                      if (![weakSelf isNull:type]) {
-                          if (offset <= fetched) {
-                              NSMutableDictionary<NSString*, NSObject*>* assetItem
-                              = [NSMutableDictionary dictionaryWithObjectsAndKeys:
-                                 asset.localIdentifier, P_ID,
-                                 name, P_NAME,
-                                 type, P_TYPE,
-                                 [weakSelf.dateFormat stringFromDate:asset.creationDate], P_DATE,
-                                 @((long) (asset.creationDate.timeIntervalSince1970 * 1000)), P_TS,
-                                 @(asset.pixelWidth), P_WIDTH,
-                                 @(asset.pixelHeight), P_HEIGHT,
-                                 nil];
-                              if (![weakSelf isNull:asset.location]) {
-                                  CLLocationCoordinate2D coord = asset.location.coordinate;
-                                  [assetItem setValue:@(coord.latitude) forKey:P_LAT];
-                                  [assetItem setValue:@(coord.longitude) forKey:P_LON];
+        if ([collection isKindOfClass:PHAssetCollection.class]) {
+            PHAssetCollection* assetCollection = collection;
+         
+            PHFetchOptions* fetchOptions = [[PHFetchOptions alloc] init];
+             fetchOptions.sortDescriptors = @[[NSSortDescriptor
+                                               sortDescriptorWithKey:@"creationDate"
+                                               ascending:NO]];
+             fetchOptions.predicate
+             = [NSPredicate predicateWithFormat:@"mediaType = %d", PHAssetMediaTypeImage];
+
+             PHFetchResult<PHAsset*>* fetchResultAssets =
+             [PHAsset fetchAssetsInAssetCollection:assetCollection options:fetchOptions];
+
+            
+             [fetchResultAssets enumerateObjectsUsingBlock:
+              ^(PHAsset* _Nonnull asset, NSUInteger idx, BOOL* _Nonnull stop) {
+                  if ([weakSelf isNull:weakSelf.photosCommand]) {
+                      *stop = YES;
+                      return;
+                  }
+                  NSString* filename = [weakSelf getFilenameForAsset:asset];
+                  if (![weakSelf isNull:filename]) {
+                      NSTextCheckingResult* match
+                      = [weakSelf.extRegex
+                         firstMatchInString:filename
+                         options:0
+                         range:NSMakeRange(0, filename.length)];
+                      if (match != nil) {
+                          NSString* name = [filename substringWithRange:[match rangeAtIndex:1]];
+                          NSString* ext = [[filename substringWithRange:[match rangeAtIndex:2]] uppercaseString];
+                          NSString* type = weakSelf.extType[ext];
+                          if (![weakSelf isNull:type]) {
+                              if (offset <= fetched) {
+                                  NSMutableDictionary<NSString*, NSObject*>* assetItem
+                                  = [NSMutableDictionary dictionaryWithObjectsAndKeys:
+                                     asset.localIdentifier, P_ID,
+                                     name, P_NAME,
+                                     type, P_TYPE,
+                                     [weakSelf.dateFormat stringFromDate:asset.creationDate], P_DATE,
+                                     @((long) (asset.creationDate.timeIntervalSince1970 * 1000)), P_TS,
+                                     @(asset.pixelWidth), P_WIDTH,
+                                     @(asset.pixelHeight), P_HEIGHT,
+                                     nil];
+                                  if (![weakSelf isNull:asset.location]) {
+                                      CLLocationCoordinate2D coord = asset.location.coordinate;
+                                      [assetItem setValue:@(coord.latitude) forKey:P_LAT];
+                                      [assetItem setValue:@(coord.longitude) forKey:P_LON];
+                                  }
+                                  [result addObject:assetItem];
+                                  if (limit > 0 && result.count >= limit) {
+                                      [weakSelf partial:self.photosCommand withArray:result];
+                                      [result removeAllObjects];
+                                  }
                               }
-                              [result addObject:assetItem];
-                              if (limit > 0 && result.count >= limit) {
-                                  [weakSelf partial:self.photosCommand withArray:result];
-                                  [result removeAllObjects];
-                              }
-                          }
-                          ++fetched;
+                              ++fetched;
+                          } else [skippedAssets addObject:asset];
                       } else [skippedAssets addObject:asset];
                   } else [skippedAssets addObject:asset];
-              } else [skippedAssets addObject:asset];
-          }];
+              }];
+        } else if ([collection isKindOfClass:PHCollectionList.class]) {
+            //nothing todo
+        }
      }];
     
     [skippedAssets enumerateObjectsUsingBlock:^(PHAsset* _Nonnull asset, NSUInteger idx, BOOL* _Nonnull stop) {
