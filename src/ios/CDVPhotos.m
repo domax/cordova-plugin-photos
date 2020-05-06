@@ -116,7 +116,7 @@ NSString* const S_SORT_TYPE = @"creationDate";
         [fetchResultCollections enumerateObjectsUsingBlock:
         ^(PHCollection* _Nonnull collection, NSUInteger idx, BOOL* _Nonnull stop) {
             if ([collection isKindOfClass:PHCollectionList.class]) {
-                //Skip album directories
+                //Skip album sub directories
                 [array addObject:(PHAssetCollection*)collection];
             } else {
                 [array addObject:(PHAssetCollection*)collection];
@@ -127,7 +127,7 @@ NSString* const S_SORT_TYPE = @"creationDate";
         
         for (PHCollection* collection in array) {
             if ([collection isKindOfClass:PHCollectionList.class]) {
-                //Skip album directories
+                //Skip album sub directories
             } else {
                 assetCollectionCount++;
             }
@@ -138,7 +138,7 @@ NSString* const S_SORT_TYPE = @"creationDate";
         
         for (PHCollection* collection in array) {
             if ([collection isKindOfClass:PHCollectionList.class]) {
-                //Skip album directories
+                //Skip album sub directories
             } else {
                 PHAssetCollection* assetCollection = (PHAssetCollection*)collection;
                 NSString* count = [@(assetCollection.estimatedAssetCount) stringValue];
