@@ -258,8 +258,8 @@ public class Photos extends CordovaPlugin {
 			selection = BUCKET_ID + " IN (" + repeatText(collectionIds.length(), "?", ",") + ")";
 			selectionArgs = this.<String>jsonArrayToList(collectionIds).toArray(new String[collectionIds.length()]);
 		} else {
-			selection = null;//BUCKET_DISPLAY_NAME + "=?";
-			selectionArgs = null;//new String[]{BN_CAMERA};
+			selection = null;
+			selectionArgs = null;
 		}
 
 		final int offset = options != null ? options.optInt(P_LIST_OFFSET, 0) : 0;

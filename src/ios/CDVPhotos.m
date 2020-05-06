@@ -116,7 +116,7 @@ NSString* const S_SORT_TYPE = @"creationDate";
         [fetchResultCollections enumerateObjectsUsingBlock:
         ^(PHCollection* _Nonnull collection, NSUInteger idx, BOOL* _Nonnull stop) {
             if ([collection isKindOfClass:PHCollectionList.class]) {
-                //Skip directories
+                //Skip album directories
                 [array addObject:(PHAssetCollection*)collection];
             } else {
                 [array addObject:(PHAssetCollection*)collection];
@@ -127,7 +127,7 @@ NSString* const S_SORT_TYPE = @"creationDate";
         
         for (PHCollection* collection in array) {
             if ([collection isKindOfClass:PHCollectionList.class]) {
-                //Skip directories
+                //Skip album directories
             } else {
                 assetCollectionCount++;
             }
@@ -138,7 +138,7 @@ NSString* const S_SORT_TYPE = @"creationDate";
         
         for (PHCollection* collection in array) {
             if ([collection isKindOfClass:PHCollectionList.class]) {
-                //Skip directories
+                //Skip album directories
             } else {
                 PHAssetCollection* assetCollection = (PHAssetCollection*)collection;
                 NSString* count = [@(assetCollection.estimatedAssetCount) stringValue];
@@ -411,8 +411,6 @@ NSString* const S_SORT_TYPE = @"creationDate";
     int limit = [[weakSelf valueFrom:options
                                byKey:P_LIST_LIMIT
                          withDefault:@"0"] intValue];
-    
-    //PHImageRequestOptions* reqOptions = [[PHImageRequestOptions alloc] init];
     
     PHFetchOptions* fetchOptions = [[PHFetchOptions alloc] init];
     NSMutableArray<NSSortDescriptor*> * descriptors = [NSMutableArray array];
