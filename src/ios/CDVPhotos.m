@@ -282,7 +282,9 @@ NSString* const S_SORT_TYPE = @"creationDate";
                  [weakSelf failure:command withMessage:E_PHOTO_NO_DATA];
                  return;
              }
-             [weakSelf success:command withData:imageData];
+             UIImage* image = [UIImage imageWithData:imageData];
+             NSData* mediaData = UIImageJPEGRepresentation(image, 1);// only JPEG Representation
+             [weakSelf success:command withData:mediaData];
          }];
     }];
 }
