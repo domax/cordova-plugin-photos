@@ -422,6 +422,10 @@ NSString* const S_SORT_TYPE = @"creationDate";
     fetchOptions.includeAllBurstAssets = YES;
     fetchOptions.includeHiddenAssets = YES;
     
+    if (offset == 0) {
+        fetchOptions.fetchLimit = limit;
+    }
+    
     PHFetchResult<PHAsset *> * fetchResultAssets = [PHAsset fetchAssetsWithMediaType:PHAssetMediaTypeImage options:fetchOptions];
     
     int __block fetched = 0;
@@ -463,8 +467,8 @@ NSString* const S_SORT_TYPE = @"creationDate";
                         }
                         [result addObject:assetItem];
                         if (limit > 0 && result.count >= limit) {
-                            [weakSelf partial:self.photosCommand withArray:result];
-                            [result removeAllObjects];
+                            *stop = YES;
+                            return ;
                         }
                     }
                     ++fetched;
@@ -562,6 +566,7 @@ NSString* const S_SORT_TYPE = @"creationDate";
                                   }
                                   [result addObject:assetItem];
                                   if (limit > 0 && result.count >= limit) {
+                                      *stop = YES;
                                       return ;
                                   }
                               }
