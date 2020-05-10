@@ -87,7 +87,7 @@ NSString* const S_SORT_TYPE = @"creationDate";
                  @"GIF": @"image/gif",
                  @"TIF": @"image/tiff",
                  @"TIFF": @"image/tiff",
-                 @"HEIC": @"image/png"};
+                 @"HEIC": @"image/jpeg"};
 
     _extRegex = [NSRegularExpression
                  regularExpressionWithPattern:T_EXT_PATTERN
@@ -126,7 +126,7 @@ NSString* const S_SORT_TYPE = @"creationDate";
         int assetCollectionCount = 0;
         
         for (PHCollection* collection in array) {
-            if ([collection isKindOfClass:PHCollectionList.class]) {
+            if ([collection isKindOfClass:PHCollectionList.class] || !((PHAssetCollection*)collection).canContainAssets) {
                 //Skip album sub directories
             } else {
                 assetCollectionCount++;
@@ -137,7 +137,7 @@ NSString* const S_SORT_TYPE = @"creationDate";
         = [NSMutableArray arrayWithCapacity:assetCollectionCount];
         
         for (PHCollection* collection in array) {
-            if ([collection isKindOfClass:PHCollectionList.class]) {
+            if ([collection isKindOfClass:PHCollectionList.class] || !((PHAssetCollection*)collection).canContainAssets) {
                 //Skip album sub directories
             } else {
                 PHAssetCollection* assetCollection = (PHAssetCollection*)collection;
@@ -296,7 +296,7 @@ NSString* const S_SORT_TYPE = @"creationDate";
 
 #pragma mark - Auxiliary functions
 
-- (void) checkPermissionsOf:(CDVInvokedUrlCommand*)command andRun:(void (^)())block {
+- (void) checkPermissionsOf:(CDVInvokedUrlCommand*)command andRun:(void (^)(void))block {
     [PHPhotoLibrary requestAuthorization:^(PHAuthorizationStatus status) {
         switch ([PHPhotoLibrary authorizationStatus]) {
             case PHAuthorizationStatusAuthorized:
@@ -481,9 +481,9 @@ NSString* const S_SORT_TYPE = @"creationDate";
     
     [skippedAssets enumerateObjectsUsingBlock:^(PHAsset* _Nonnull asset, NSUInteger idx, BOOL* _Nonnull stop) {
         NSLog(@"skipped asset %lu: id=%@; name=%@, type=%ld-%ld; size=%lux%lu;",
-              idx, asset.localIdentifier, [weakSelf getFilenameForAsset:asset],
+              (long)idx, asset.localIdentifier, [weakSelf getFilenameForAsset:asset],
               (long)asset.mediaType, (long)asset.mediaSubtypes,
-              (unsigned long)asset.pixelWidth, asset.pixelHeight);
+              (unsigned long)asset.pixelWidth, (long)asset.pixelHeight);
     }];
     
     return result;
@@ -510,12 +510,15 @@ NSString* const S_SORT_TYPE = @"creationDate";
          }
         
         if ([collection isKindOfClass:PHAssetCollection.class]) {
-            PHAssetCollection* assetCollection = collection;
+            PHAssetCollection* assetCollection = (PHAssetCollection*)collection;
          
             PHFetchOptions* fetchOptions = [[PHFetchOptions alloc] init];
              fetchOptions.sortDescriptors = @[[NSSortDescriptor
                                                sortDescriptorWithKey:@"creationDate"
                                                ascending:NO]];
+            if (offset == 0) {
+                fetchOptions.fetchLimit = limit;
+            }
              fetchOptions.predicate
              = [NSPredicate predicateWithFormat:@"mediaType = %d", PHAssetMediaTypeImage];
 
@@ -559,8 +562,7 @@ NSString* const S_SORT_TYPE = @"creationDate";
                                   }
                                   [result addObject:assetItem];
                                   if (limit > 0 && result.count >= limit) {
-                                      [weakSelf partial:self.photosCommand withArray:result];
-                                      [result removeAllObjects];
+                                      return ;
                                   }
                               }
                               ++fetched;
@@ -575,9 +577,9 @@ NSString* const S_SORT_TYPE = @"creationDate";
     
     [skippedAssets enumerateObjectsUsingBlock:^(PHAsset* _Nonnull asset, NSUInteger idx, BOOL* _Nonnull stop) {
         NSLog(@"skipped asset %lu: id=%@; name=%@, type=%ld-%ld; size=%lux%lu;",
-              idx, asset.localIdentifier, [weakSelf getFilenameForAsset:asset],
+              (long)idx, asset.localIdentifier, [weakSelf getFilenameForAsset:asset],
               (long)asset.mediaType, (long)asset.mediaSubtypes,
-              (unsigned long)asset.pixelWidth, asset.pixelHeight);
+              (unsigned long)asset.pixelWidth, (long)asset.pixelHeight);
     }];
     
     return result;
