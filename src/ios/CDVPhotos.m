@@ -293,16 +293,11 @@ NSString* const S_SORT_TYPE = @"creationDate";
 - (UIImage*)rotateUIImage:(UIImage*)sourceImage orientation:(UIImageOrientation)orientation
 {
     CGSize size = sourceImage.size;
-    CGFloat width = size.width;
-    CGFloat height = size.height;
     
     switch (orientation) {
         case UIImageOrientationDown:          // 180 deg rotation
-            break ;
         case UIImageOrientationLeft:          // 90 deg CCW
         case UIImageOrientationRight:         // 90 deg CW
-            width = size.height;
-            height = size.width;
             break ;
         case UIImageOrientationUp:            // default orientation
         case UIImageOrientationUpMirrored:    // as above but image mirrored along other axis. horizontal flip
@@ -311,8 +306,8 @@ NSString* const S_SORT_TYPE = @"creationDate";
         case UIImageOrientationRightMirrored: // vertical flip
             return sourceImage;
     }
-    UIGraphicsBeginImageContext(CGSizeMake(width, height));
-    [[UIImage imageWithCGImage:[sourceImage CGImage] scale:1.0 orientation:orientation] drawInRect:CGRectMake(0,0,width,height)];
+    UIGraphicsBeginImageContext(CGSizeMake(size.width, size.height));
+    [[UIImage imageWithCGImage:[sourceImage CGImage] scale:1.0 orientation:orientation] drawInRect:CGRectMake(0,0,size.width,size.height)];
     UIImage* newImage = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
 
