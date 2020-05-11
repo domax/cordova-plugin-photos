@@ -283,10 +283,22 @@ NSString* const S_SORT_TYPE = @"creationDate";
                  return;
              }
              UIImage* image = [UIImage imageWithData:imageData];
-             NSData* mediaData = UIImageJPEGRepresentation(image, 1);// only JPEG Representation
+             UIImage* imageOriented = [weakSelf rotateUIImage:image orientation:orientation];
+             NSData* mediaData = UIImageJPEGRepresentation(imageOriented, 1);// only JPEG Representation
              [weakSelf success:command withData:mediaData];
          }];
     }];
+}
+
+- (UIImage*)rotateUIImage:(UIImage*)sourceImage orientation:(UIImageOrientation)orientation
+{
+    CGSize size = sourceImage.size;
+    UIGraphicsBeginImageContext(CGSizeMake(size.height, size.width));
+    [[UIImage imageWithCGImage:[sourceImage CGImage] scale:1.0 orientation:orientation] drawInRect:CGRectMake(0,0,size.width ,size.height)];
+    UIImage* newImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+
+    return newImage;
 }
 
 - (void) cancel:(CDVInvokedUrlCommand*)command {
