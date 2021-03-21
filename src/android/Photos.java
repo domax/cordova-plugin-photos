@@ -69,7 +69,7 @@ public class Photos extends CordovaPlugin {
 	private static final String P_DATE = "date";
 	private static final String P_TS = "timestamp";
 	private static final String P_TYPE = "contentType";
-    private static final String P_COUNT = "count";
+        private static final String P_COUNT = "count";
 
 	private static final String P_SIZE = "dimension";
 	private static final String P_QUALITY = "quality";
@@ -109,7 +109,7 @@ public class Photos extends CordovaPlugin {
 
 	@SuppressWarnings("MismatchedReadAndWriteOfArray")
 	private static final String[] PRJ_COLLECTIONS =
-			new String[]{"DISTINCT " + BUCKET_ID, BUCKET_DISPLAY_NAME, SIZE};
+			new String[]{BUCKET_ID, BUCKET_DISPLAY_NAME, SIZE};
 
 	@SuppressWarnings("MismatchedReadAndWriteOfArray")
 	private static final String[] PRJ_PHOTOS =
